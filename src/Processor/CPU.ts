@@ -9,38 +9,48 @@ enum Register {
     REG_PC = "REG_PC"
 }
 
-
+const Instruction_OptCode_Table : {[instruction: string]: number} = {
+    "INS_IMD_LDA": 0xA9,
+    "INS_IMD_LDX": 0xA2
+}
 /**
  * A chip-8 CPU emulator
  */
 class CPU {
 
 
-    private status: { [flag: string]: number};
+
+    private status: { [flag: string]: number} = {
+        carry: 0,
+        zero: 0,
+        inter_dis: 0,
+        decimal: 0,
+        break: 0,
+        overflow: 0,
+        negative: 0
+    };
 
     private REG_X: number;
     private REG_Y: number;
     private REG_SP: number;
     private REG_ACC: number;
-    private registers: number[];
 
     private REG_PC: number;
-    private REG_PC_NEW: number;
+    // private REG_PC_NEW: number;
 
     private memory: number[];
 
-    private opt_table: { [optcode: number]: (cycle: number) => number};
+    private opt_table: { [optcode: number]: (cycle: number) => number} = {
+        0xA9 : this.loadAcc,
+        0xA2: this.loadX,
+        0x00: () => {throw new Error("Not correct optcode!!!");}
+    };
 
-    private opt_code: number;
 
     // TODO: Complete constructor and initialization
     constructor() {
         this.memory = new Array<number> (0x10000);
         this.reset();
-        this.opt_table = {
-            0xA9: this.loadAcc,
-            0xA2: this.loadX
-        };
     }
 
     private reset(): void {
@@ -51,7 +61,7 @@ class CPU {
         this.REG_SP = 0x0100;
         // Reset Program counter:
         this.REG_PC = 0xFFFC;
-        this.REG_PC_NEW = 0xFFFC;
+        // this.REG_PC_NEW = 0xFFFC;
         this.resetStatus();
         this.resetMemory();
     }
@@ -97,12 +107,14 @@ class CPU {
 
 
 
-    private execute(cycles: number): void {
+    public execute(cycles: number): void {
         let exe_cycles = cycles;
         while (exe_cycles > 0) {
             const fetched = this.fetch(exe_cycles);
             const instruction = fetched.data;
             exe_cycles = fetched.cycles;
+            console.log(fetched);
+            console.log(this.opt_table);
             exe_cycles = this.opt_table[instruction](exe_cycles);
         }
     }
@@ -117,8 +129,17 @@ class CPU {
     }
 
 
+    public log(): void {
+        console.log(`Current CPU Program Counter: ${this.REG_PC}\n`);
+        console.log(`Current CPU Stack Pointer: ${this.REG_SP}\n`);
+        console.log("Printing all the status: ");
+        Object.entries(this.status).map((entry) => console.log(`${entry[0]}: ${entry[1]} \n`));
+    }
 
 
+}
 
 
+export {
+    CPU
 }
