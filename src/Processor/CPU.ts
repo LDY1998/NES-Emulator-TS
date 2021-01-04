@@ -9,9 +9,26 @@ enum Register {
     REG_PC = "REG_PC"
 }
 
-const Instruction_OptCode_Table : {[instruction: string]: number} = {
-    "INS_IMD_LDA": 0xA9,
-    "INS_IMD_LDX": 0xA2
+enum Instruction_OptCode_Table {
+    LDA_IMD = 0xA9,
+    LDX_IMD = 0xA2,
+    LDY_IMD = 0xA0,
+    LDA_ZP = 0xA5,
+    LDX_ZP = 0xA6,
+    LDY_ZP = 0xA4
+}
+
+
+enum Mode {
+    IMD,
+    ZP,
+    ZPX,
+    ZPY,
+    ABS,
+    ABSX,
+    ABSY,
+    IDX,
+    IDY
 }
 /**
  * A chip-8 CPU emulator
@@ -41,8 +58,12 @@ class CPU {
     private memory: number[];
 
     private opt_table: { [optcode: number]: (cycle: number) => number} = {
-        0xA9 : this.loadAcc,
-        0xA2: this.loadX,
+        [Instruction_OptCode_Table.LDA_IMD] : this.loadAccImd,
+        [Instruction_OptCode_Table.LDX_IMD]: this.loadXImd,
+        [Instruction_OptCode_Table.LDY_IMD]: this.loadYImd,
+        [Instruction_OptCode_Table.LDA_ZP]: this.loadAccZP,
+        [Instruction_OptCode_Table.LDX_ZP]: this.loadXZP,
+        [Instruction_OptCode_Table.LDY_ZP]: this.loadYZP,
         0x00: () => {throw new Error("Not correct optcode!!!");}
     };
 
@@ -67,32 +88,89 @@ class CPU {
     }
 
 
+    private setLoadFlag (register: Register): void {
+        this.status.zero = this[register] === 0 ? 1 : 0;
+        this.status.negative = this[register] >> 7 & 0x01;
+    }
 
 
-    private load(cycles: number, reg: Register): number {
+
+    private load(cycles: number, reg: Register, mode: Mode): number {
+        const value = this.fetch(cycles);
+        const data = value.data;
+        const register = reg;
+        const exe_cycles = value.cycles;
+
+        switch (mode) {
+            case Mode.IMD:
+                this[register] = data;
+                break;
+            case Mode.ZP:
+                this[register] = this.memory[data];
+                break;
+            default:
+                break;
+        }
+
+        this.setLoadFlag(reg);
+        this.REG_PC++;
+
+        return exe_cycles - 1;
+    }
+    private loadImd(cycles: number, reg: Register): number {
         const value = this.fetch(cycles);
         const data = value.data;
         const register = reg;
         const exe_cycles = value.cycles;
 
         this[register] = data;
-        this.status.zero = this[register] === 0 ? 1 : 0;
-        this.status.negative = this[register] >> 7 & 0x01;
+        
+        this.setLoadFlag(reg);
 
         this.REG_PC++;
 
         return exe_cycles - 1;
     }
 
-    private loadAcc(cycles: number): number {
-        console.log(this);
-        return this.load(cycles, Register.REG_ACC);
+    private loadZeroPage(cycles: number, reg: Register): number {
+        const value = this.fetch(cycles);
+        const data = value.data;
+        const register = reg;
+        const exe_cycles = value.cycles;
+
+        this[register] = this.memory[data];
+        
+        this.setLoadFlag(reg);
+
+        this.REG_PC++;
+
+        return exe_cycles - 1;
+    }
+
+    private loadAccImd(cycles: number): number {
+        // return this.loadImd(cycles, Register.REG_ACC);
+        return this.load(cycles, Register.REG_ACC, Mode.IMD);
     }
 
     
-    private loadX(cycles: number): number {
-        console.log(this.load);
-        return this.load(cycles, Register.REG_X);
+    private loadXImd(cycles: number): number {
+        return this.loadImd(cycles, Register.REG_X);
+    }
+
+    private loadYImd(cycles: number): number {
+        return this.loadImd(cycles, Register.REG_Y);
+    }
+
+    private loadAccZP(cycles: number): number {
+        return this.loadZeroPage(cycles, Register.REG_ACC);
+    }
+    
+    private loadXZP(cycles: number): number {
+        return this.loadZeroPage(cycles, Register.REG_X);
+    }
+
+    private loadYZP(cycles: number): number {
+        return this.loadZeroPage(cycles, Register.REG_Y);
     }
 
     private resetMemory(): void {
@@ -100,13 +178,22 @@ class CPU {
     }
 
     private resetStatus(): void {
-        this.status["carry"] = 0;
-        this.status["zero"] = 0;
-        this.status["inter_dis"] = 0;
-        this.status["decimal"] = 0;
-        this.status["break"] = 0;
-        this.status["overflow"] = 0;
-        this.status["negative"] = 0;
+        // this.status["carry"] = 0;
+        // this.status["zero"] = 0;
+        // this.status["inter_dis"] = 0;
+        // this.status["decimal"] = 0;
+        // this.status["break"] = 0;
+        // this.status["overflow"] = 0;
+        // this.status["negative"] = 0;
+        Object.assign(this.status, {
+            carry: 0,
+            zero: 0,
+            inter_dis: 0,
+            decimal: 0,
+            break: 0,
+            overflow: 0,
+            negative: 0
+        });
     }
 
 
@@ -136,9 +223,10 @@ class CPU {
 
 
     public log(): void {
-        // console.log(`Current CPU Program Counter: ${this.REG_PC}\n`);
-        // console.log(`Current CPU Stack Pointer: ${this.REG_SP}\n`);
-        // console.log("Printing all the status: ");
+        console.log("Printing all the status: ");
+        Object.entries(this.status).map((entry) => {
+            console.log(`${entry[0]}: ${entry[1]} \n`);
+        });
         Object.entries(this).map((entry) => {
             if (entry[0] === "memory")
                 return;
@@ -160,5 +248,6 @@ class CPU {
 
 
 export {
-    CPU
+    CPU,
+    Instruction_OptCode_Table
 }
