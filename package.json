@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "ts-node ./src/Emulator.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' mocha -r ts-node/register 'tests/**/*.ts'"
   },
   "repository": {
     "type": "git",
@@ -18,9 +18,13 @@
   },
   "homepage": "https://github.com/LDY1998/NES-Emulator-TS#readme",
   "devDependencies": {
+    "@types/chai": "^4.2.14",
     "@types/express": "^4.17.9",
+    "@types/mocha": "^8.2.0",
     "@types/node": "^14.14.19",
+    "chai": "^4.2.0",
     "express": "^4.17.1",
+    "mocha": "^8.2.1",
     "ts-node": "^9.1.1",
     "typescript": "^4.1.3"
   }

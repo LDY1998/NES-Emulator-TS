@@ -80,7 +80,7 @@ class CPU {
         this.reset();
     }
 
-    private reset(): void {
+    public reset(): void {
         this.REG_ACC = 0;
         this.REG_X = 0;
         this.REG_Y = 0;
@@ -128,13 +128,12 @@ class CPU {
                 const zpy_value = this.readZP((data + this.REG_Y) % 0xFF, exe_cycles);
                 this[register] = zpy_value.data;
                 exe_cycles = zpy_value.cycles;
+            break;
             default:
                 break;
         }
 
         this.setLoadFlag(reg);
-        this.REG_PC++;
-
         return exe_cycles - 1;
     }
 
@@ -200,8 +199,16 @@ class CPU {
             // When calling a function from a object entry, this needs to rebind to class
             // Otherwise this will be the object itself (i.e. opt_table)
             const method = this.opt_table[instruction].bind(this);
-            exe_cycles = method(exe_cycles); 
+            exe_cycles = method(exe_cycles);
         }
+    }
+
+    public getRegister(register: Register): number {
+        return this[register];
+    }
+
+    public getStatus(flag: string): number {
+        return this.status[flag];
     }
 
     private fetch(cycles: number) {
@@ -251,5 +258,6 @@ class CPU {
 
 export {
     CPU,
-    Instruction_OptCode_Table
+    Instruction_OptCode_Table,
+    Register
 }
