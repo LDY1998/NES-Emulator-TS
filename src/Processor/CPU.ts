@@ -15,7 +15,10 @@ enum Instruction_OptCode_Table {
     LDY_IMD = 0xA0,
     LDA_ZP = 0xA5,
     LDX_ZP = 0xA6,
-    LDY_ZP = 0xA4
+    LDY_ZP = 0xA4,
+    LDA_ZPX = 0XB5,
+    LDY_ZPX = 0xB4,
+    LDX_ZPY = 0xB6
 }
 
 
@@ -64,6 +67,9 @@ class CPU {
         [Instruction_OptCode_Table.LDA_ZP]: this.loadAccZP,
         [Instruction_OptCode_Table.LDX_ZP]: this.loadXZP,
         [Instruction_OptCode_Table.LDY_ZP]: this.loadYZP,
+        [Instruction_OptCode_Table.LDA_ZPX]: this.loadZPX(Register.REG_ACC),
+        [Instruction_OptCode_Table.LDY_ZPX]: this.loadZPX(Register.REG_Y),
+        [Instruction_OptCode_Table.LDX_ZPY]: this.loadZPY(Register.REG_X),
         0x00: () => {throw new Error("Not correct optcode!!!");}
     };
 
@@ -99,15 +105,29 @@ class CPU {
         const value = this.fetch(cycles);
         const data = value.data;
         const register = reg;
-        const exe_cycles = value.cycles;
+        let exe_cycles = value.cycles;
 
         switch (mode) {
             case Mode.IMD:
                 this[register] = data;
-                break;
+            break;
             case Mode.ZP:
-                this[register] = this.memory[data];
-                break;
+                const zp_value = this.readZP(data, exe_cycles);
+                this[register] = zp_value.data;
+                exe_cycles = zp_value.cycles;
+            break;
+
+            // The emulation skip one cycle for calculating the sum, now it's 3 cycles
+            // for ZPX load, and should be the same for ZPY mode
+            case Mode.ZPX:
+                const zpx_value = this.readZP((data + this.REG_X) % 0xFF, exe_cycles);
+                this[register] = zpx_value.data;
+                exe_cycles = zpx_value.cycles;
+            break;
+            case Mode.ZPY:
+                const zpy_value = this.readZP((data + this.REG_Y) % 0xFF, exe_cycles);
+                this[register] = zpy_value.data;
+                exe_cycles = zpy_value.cycles;
             default:
                 break;
         }
@@ -117,60 +137,39 @@ class CPU {
 
         return exe_cycles - 1;
     }
-    private loadImd(cycles: number, reg: Register): number {
-        const value = this.fetch(cycles);
-        const data = value.data;
-        const register = reg;
-        const exe_cycles = value.cycles;
-
-        this[register] = data;
-        
-        this.setLoadFlag(reg);
-
-        this.REG_PC++;
-
-        return exe_cycles - 1;
-    }
-
-    private loadZeroPage(cycles: number, reg: Register): number {
-        const value = this.fetch(cycles);
-        const data = value.data;
-        const register = reg;
-        const exe_cycles = value.cycles;
-
-        this[register] = this.memory[data];
-        
-        this.setLoadFlag(reg);
-
-        this.REG_PC++;
-
-        return exe_cycles - 1;
-    }
 
     private loadAccImd(cycles: number): number {
-        // return this.loadImd(cycles, Register.REG_ACC);
         return this.load(cycles, Register.REG_ACC, Mode.IMD);
     }
-
     
     private loadXImd(cycles: number): number {
-        return this.loadImd(cycles, Register.REG_X);
+        return this.load(cycles, Register.REG_X, Mode.IMD);
     }
 
     private loadYImd(cycles: number): number {
-        return this.loadImd(cycles, Register.REG_Y);
+        return this.load(cycles, Register.REG_Y, Mode.IMD);
     }
 
     private loadAccZP(cycles: number): number {
-        return this.loadZeroPage(cycles, Register.REG_ACC);
+        return this.load(cycles, Register.REG_ACC, Mode.ZP);
     }
     
     private loadXZP(cycles: number): number {
-        return this.loadZeroPage(cycles, Register.REG_X);
+        return this.load(cycles, Register.REG_X, Mode.ZP);
     }
 
     private loadYZP(cycles: number): number {
-        return this.loadZeroPage(cycles, Register.REG_Y);
+        return this.load(cycles, Register.REG_Y, Mode.ZP);
+    }
+
+    private loadZPX(register: Register): (cycles: number) => number {
+        const func = (cycles: number) => { return this.load(cycles, register, Mode.ZPX)}
+        return func.bind(this);
+    }
+
+    private loadZPY(register: Register): (cycles: number) => number {
+        const func = (cycles: number) => { return this.load(cycles, register, Mode.ZPY)}
+        return func.bind(this);
     }
 
     private resetMemory(): void {
@@ -178,13 +177,6 @@ class CPU {
     }
 
     private resetStatus(): void {
-        // this.status["carry"] = 0;
-        // this.status["zero"] = 0;
-        // this.status["inter_dis"] = 0;
-        // this.status["decimal"] = 0;
-        // this.status["break"] = 0;
-        // this.status["overflow"] = 0;
-        // this.status["negative"] = 0;
         Object.assign(this.status, {
             carry: 0,
             zero: 0,
@@ -220,6 +212,16 @@ class CPU {
             "cycles": cycles-1
         };
     }
+
+    private readZP(address: number, cycles: number) {
+        const data = this.memory[address];
+        this.REG_PC++;
+        return {
+            "data": data,
+            "cycles": cycles - 1
+        }
+    }
+
 
 
     public log(): void {
