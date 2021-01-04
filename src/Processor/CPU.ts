@@ -67,16 +67,9 @@ class CPU {
     }
 
 
-    private loadAcc(cycles: number): number {
-        return this.load(cycles, Register.REG_ACC);
-    }
 
-    
-    private loadX(cycles: number): number {
-        return this.load(cycles, Register.REG_X);
-    }
 
-    private load(cycles: number, reg: Register) {
+    private load(cycles: number, reg: Register): number {
         const value = this.fetch(cycles);
         const data = value.data;
         const register = reg;
@@ -89,6 +82,17 @@ class CPU {
         this.REG_PC++;
 
         return exe_cycles - 1;
+    }
+
+    private loadAcc(cycles: number): number {
+        console.log(this);
+        return this.load(cycles, Register.REG_ACC);
+    }
+
+    
+    private loadX(cycles: number): number {
+        console.log(this.load);
+        return this.load(cycles, Register.REG_X);
     }
 
     private resetMemory(): void {
@@ -113,9 +117,11 @@ class CPU {
             const fetched = this.fetch(exe_cycles);
             const instruction = fetched.data;
             exe_cycles = fetched.cycles;
-            console.log(fetched);
-            console.log(this.opt_table);
-            exe_cycles = this.opt_table[instruction](exe_cycles);
+
+            // When calling a function from a object entry, this needs to rebind to class
+            // Otherwise this will be the object itself (i.e. opt_table)
+            const method = this.opt_table[instruction].bind(this);
+            exe_cycles = method(exe_cycles); 
         }
     }
 
@@ -130,11 +136,24 @@ class CPU {
 
 
     public log(): void {
-        console.log(`Current CPU Program Counter: ${this.REG_PC}\n`);
-        console.log(`Current CPU Stack Pointer: ${this.REG_SP}\n`);
-        console.log("Printing all the status: ");
-        Object.entries(this.status).map((entry) => console.log(`${entry[0]}: ${entry[1]} \n`));
+        // console.log(`Current CPU Program Counter: ${this.REG_PC}\n`);
+        // console.log(`Current CPU Stack Pointer: ${this.REG_SP}\n`);
+        // console.log("Printing all the status: ");
+        Object.entries(this).map((entry) => {
+            if (entry[0] === "memory")
+                return;
+            console.log(`${entry[0]}: ${entry[1]} \n`);
+        });
     }
+
+    public getPC(): number {
+        return this.REG_PC;
+    }
+
+    // Set memory at specific address for purely testing
+    public setMemory(address: number, value: number) {
+        this.memory[address] = value;
+    } 
 
 
 }
