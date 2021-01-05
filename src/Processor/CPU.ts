@@ -61,12 +61,12 @@ class CPU {
     private memory: number[];
 
     private opt_table: { [optcode: number]: (cycle: number) => number} = {
-        [Instruction_OptCode_Table.LDA_IMD] : this.loadAccImd,
-        [Instruction_OptCode_Table.LDX_IMD]: this.loadXImd,
-        [Instruction_OptCode_Table.LDY_IMD]: this.loadYImd,
-        [Instruction_OptCode_Table.LDA_ZP]: this.loadAccZP,
-        [Instruction_OptCode_Table.LDX_ZP]: this.loadXZP,
-        [Instruction_OptCode_Table.LDY_ZP]: this.loadYZP,
+        [Instruction_OptCode_Table.LDA_IMD] : this.loadImd(Register.REG_ACC),
+        [Instruction_OptCode_Table.LDX_IMD]: this.loadImd(Register.REG_X),
+        [Instruction_OptCode_Table.LDY_IMD]: this.loadImd(Register.REG_Y),
+        [Instruction_OptCode_Table.LDA_ZP]: this.loadZP(Register.REG_ACC),
+        [Instruction_OptCode_Table.LDX_ZP]: this.loadZP(Register.REG_X),
+        [Instruction_OptCode_Table.LDY_ZP]: this.loadZP(Register.REG_Y),
         [Instruction_OptCode_Table.LDA_ZPX]: this.loadZPX(Register.REG_ACC),
         [Instruction_OptCode_Table.LDY_ZPX]: this.loadZPX(Register.REG_Y),
         [Instruction_OptCode_Table.LDX_ZPY]: this.loadZPY(Register.REG_X),
@@ -137,28 +137,14 @@ class CPU {
         return exe_cycles - 1;
     }
 
-    private loadAccImd(cycles: number): number {
-        return this.load(cycles, Register.REG_ACC, Mode.IMD);
-    }
-    
-    private loadXImd(cycles: number): number {
-        return this.load(cycles, Register.REG_X, Mode.IMD);
+    private loadZP(register: Register): (cycles: number) => number {
+        const func = (cycles: number) => { return this.load(cycles, register, Mode.ZP)}
+        return func.bind(this);
     }
 
-    private loadYImd(cycles: number): number {
-        return this.load(cycles, Register.REG_Y, Mode.IMD);
-    }
-
-    private loadAccZP(cycles: number): number {
-        return this.load(cycles, Register.REG_ACC, Mode.ZP);
-    }
-    
-    private loadXZP(cycles: number): number {
-        return this.load(cycles, Register.REG_X, Mode.ZP);
-    }
-
-    private loadYZP(cycles: number): number {
-        return this.load(cycles, Register.REG_Y, Mode.ZP);
+    private loadImd(register: Register): (cycles: number) => number {
+        const func = (cycles: number) => { return this.load(cycles, register, Mode.IMD)}
+        return func.bind(this);
     }
 
     private loadZPX(register: Register): (cycles: number) => number {

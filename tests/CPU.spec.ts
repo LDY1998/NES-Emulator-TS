@@ -15,26 +15,28 @@ describe("CPU Testing", () => {
 
     afterEach(function () {
         cpu.reset();
-        console.log(`BeforeTest: ${this.currentTest.title}: \n`);
+        console.log(`AfterTest: ${this.currentTest.title}: \n`);
     })
 
     describe("Tests for loading", () => {
 
+        const setInstructionAndExecute = (instruction: Instruction_OptCode_Table, value: number, cycles: number) => {
+            cpu.setMemory(cpu.getPC(), instruction);
+            cpu.setMemory(cpu.getPC()+1, value);
+            cpu.execute(cycles);
+        };
+
         describe("Loading immediate", () => {
 
             it("Loading immediate positive", () => {
-                cpu.setMemory(cpu.getPC(), Instruction_OptCode_Table.LDA_IMD);
-                cpu.setMemory(cpu.getPC()+1, 0x01);
-                cpu.execute(2);
+                setInstructionAndExecute(Instruction_OptCode_Table.LDA_IMD, 0x01, 2);
                 expect(cpu.getPC()).equal(0xFFFC+2);
                 expect(cpu.getRegister(Register.REG_ACC)).equal(0x01);
                 expect(cpu.getStatus("negative")).equal(0);
             });
 
             it("Loading immediate negative", () => {
-                cpu.setMemory(cpu.getPC(), Instruction_OptCode_Table.LDA_IMD);
-                cpu.setMemory(cpu.getPC()+1, 0xF1);
-                cpu.execute(2);
+                setInstructionAndExecute(Instruction_OptCode_Table.LDA_IMD, 0xF1, 2);
                 expect(cpu.getPC()).equal(0xFFFC+2);
                 expect(cpu.getRegister(Register.REG_ACC)).equal(0xF1);
                 expect(cpu.getStatus("negative")).equal(1);
