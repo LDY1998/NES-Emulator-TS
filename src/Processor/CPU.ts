@@ -102,17 +102,21 @@ class CPU {
 
 
     private load(cycles: number, reg: Register, mode: Mode): number {
+        
+        const register = reg;
         const value = this.fetch(cycles);
         const data = value.data;
-        const register = reg;
+
         let exe_cycles = value.cycles;
+
 
         switch (mode) {
             case Mode.IMD:
                 this[register] = data;
+                exe_cycles = value.cycles;
             break;
             case Mode.ZP:
-                const zp_value = this.readZP(data, exe_cycles);
+                const zp_value = this.readByte(data % 0x00FF, exe_cycles);
                 this[register] = zp_value.data;
                 exe_cycles = zp_value.cycles;
             break;
@@ -120,14 +124,40 @@ class CPU {
             // The emulation skip one cycle for calculating the sum, now it's 3 cycles
             // for ZPX load, and should be the same for ZPY mode
             case Mode.ZPX:
-                const zpx_value = this.readZP((data + this.REG_X) % 0xFF, exe_cycles);
+                const zpx_value = this.readByte((data + this.REG_X) % 0xFF, exe_cycles);
                 this[register] = zpx_value.data;
                 exe_cycles = zpx_value.cycles;
             break;
             case Mode.ZPY:
-                const zpy_value = this.readZP((data + this.REG_Y) % 0xFF, exe_cycles);
+                const zpy_value = this.readByte((data + this.REG_Y) % 0xFF, exe_cycles);
                 this[register] = zpy_value.data;
                 exe_cycles = zpy_value.cycles;
+            break;
+
+            // Fetch 2-bytes (16 bits) address from pc first
+            // Compose them up to a 16 bits address and read the value of memory at the address
+            // 4 cycles in total
+            case Mode.ABS:
+                const least_sig = this.fetch(exe_cycles);
+                const abs_address = data | least_sig.data;
+                const abs_value = this.readByte(abs_address, least_sig.cycles);
+                this[register] = abs_value.data;
+                exe_cycles = abs_value.cycles;
+            break;
+            case Mode.ABSX:
+                const least_sigx = this.fetch(exe_cycles);
+                const abs_addressx = data | least_sigx.data;
+                const abs_valuex = this.readByte(abs_addressx + this[this.REG_X], least_sigx.cycles);
+                this[register] = abs_valuex.data;
+                exe_cycles = abs_valuex.cycles;
+            break;
+
+            case Mode.ABSY:
+                const least_sigy = this.fetch(exe_cycles);
+                const abs_addressy = data | least_sigy.data;
+                const abs_valuey = this.readByte(abs_addressy + this[this.REG_Y], least_sigy.cycles);
+                this[register] = abs_valuey.data;
+                exe_cycles = abs_valuey.cycles;
             break;
             default:
                 break;
@@ -208,7 +238,7 @@ class CPU {
         };
     }
 
-    private readZP(address: number, cycles: number) {
+    private readByte(address: number, cycles: number) {
         const data = this.memory[address];
         this.REG_PC++;
         return {

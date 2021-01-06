@@ -8,7 +8,6 @@ describe("CPU Testing", () => {
     console.log(`Before all`);
 
     const cpu = new CPU();
-    console.log(cpu.getPC());
 
 
     const initial_pc = 0xFFFC;
@@ -30,7 +29,6 @@ describe("CPU Testing", () => {
                 cpu.setMemory(cpu.getPC(), Instruction_OptCode_Table.LDA_IMD);
                 cpu.setMemory(cpu.getPC()+1, 0x01);
                 cpu.execute(2);
-                // setInstructionAndExecute(Instruction_OptCode_Table.LDA_IMD, 0x01, 2);
                 expect(cpu.getPC()).equal(initial_pc+2);
                 expect(cpu.getRegister(Register.REG_ACC)).equal(0x01);
                 expect(cpu.getStatus("negative")).equal(0);
@@ -40,7 +38,6 @@ describe("CPU Testing", () => {
                 cpu.setMemory(cpu.getPC(), Instruction_OptCode_Table.LDA_IMD);
                 cpu.setMemory(cpu.getPC()+1, 0xF1);
                 cpu.execute(2);
-                // setInstructionAndExecute(Instruction_OptCode_Table.LDA_IMD, 0xF1, 2);
                 expect(cpu.getPC()).equal(initial_pc+2);
                 expect(cpu.getRegister(Register.REG_ACC)).equal(0xF1);
                 expect(cpu.getStatus("negative")).equal(1);
