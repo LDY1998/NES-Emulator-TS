@@ -193,6 +193,8 @@ class CPU {
         return this[register];
     }
 
+
+
     public getStatus(flag: string): number {
         return this.status[flag];
     }
@@ -238,6 +240,10 @@ class CPU {
         this.memory[address] = value;
     } 
 
+    // Set specific register to a value for purely testing
+    public setRegister(register: Register, value: number): void {
+        this[register] = value;
+    }
 
 }
 
