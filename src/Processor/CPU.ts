@@ -18,7 +18,19 @@ enum Instruction_OptCode_Table {
     LDY_ZP = 0xA4,
     LDA_ZPX = 0XB5,
     LDY_ZPX = 0xB4,
-    LDX_ZPY = 0xB6
+    LDX_ZPY = 0xB6,
+    LDA_ABS = 0xAD,
+    LDA_ABSX = 0xBD,
+    LDA_ABSY = 0xB9,
+    LDX_ABS = 0xAE,
+    LDX_ABSY = 0xBE,
+    LDY_ABS = 0xAC,
+    LDY_ABSX = 0xBC,
+    STA_ZP = 0x85,
+    STA_ZPX = 0x95,
+    STA_ABS = 0x8D,
+    STA_ABSX = 0x9D,
+    STA_ABSY = 0x99
 }
 
 
@@ -70,6 +82,18 @@ class CPU {
         [Instruction_OptCode_Table.LDA_ZPX]: this.loadZPX(Register.REG_ACC),
         [Instruction_OptCode_Table.LDY_ZPX]: this.loadZPX(Register.REG_Y),
         [Instruction_OptCode_Table.LDX_ZPY]: this.loadZPY(Register.REG_X),
+        [Instruction_OptCode_Table.LDA_ABS]: this.loadABS(Register.REG_ACC),
+        [Instruction_OptCode_Table.LDA_ABSX]: this.loadABSX(Register.REG_ACC),
+        [Instruction_OptCode_Table.LDA_ABSY]: this.loadABSY(Register.REG_ACC),
+        [Instruction_OptCode_Table.LDX_ABS]: this.loadABS(Register.REG_X),
+        [Instruction_OptCode_Table.LDX_ABSY]: this.loadABSY(Register.REG_X),
+        [Instruction_OptCode_Table.LDY_ABS]: this.loadABS(Register.REG_Y),
+        [Instruction_OptCode_Table.LDY_ABSX]: this.loadABSX(Register.REG_Y),
+        [Instruction_OptCode_Table.STA_ZP]: this.store(Register.REG_ACC, Mode.ZP),
+        [Instruction_OptCode_Table.STA_ZPX]: this.store(Register.REG_ACC, Mode.ZPX),
+        [Instruction_OptCode_Table.STA_ABS]: this.store(Register.REG_ACC, Mode.ABS),
+        [Instruction_OptCode_Table.STA_ABSX]: this.store(Register.REG_ACC, Mode.ABSX),
+        [Instruction_OptCode_Table.STA_ABSY]: this.store(Register.REG_ACC, Mode.ABSY),
         0x00: () => {throw new Error("Not correct optcode!!!");}
     };
 
@@ -88,7 +112,6 @@ class CPU {
         this.REG_SP = 0x0100;
         // Reset Program counter:
         this.REG_PC = 0xFFFC;
-        // this.REG_PC_NEW = 0xFFFC;
         this.resetStatus();
         this.resetMemory();
     }
@@ -100,7 +123,53 @@ class CPU {
     }
 
 
+    /**
+     * 
+     * @param cycles cycles needed
+     * @param reg register to store
+     * @param mode address looking mode
+     */
+    private store(reg: Register, mode: Mode): (cycles: number) => number {
 
+        const func: (cycles: number) => number = (cycles: number) => {
+            const register = reg;
+            const value = this.fetch(cycles);
+            const data = value.data;
+
+            let exe_cycles = value.cycles;
+    
+            switch (mode) {
+                case Mode.ZP:
+                    exe_cycles = this.storeByte(data, exe_cycles, register);
+                break;
+                case Mode.ZPX:
+                    exe_cycles = this.storeByte((data + this.REG_X) % 0xFF, exe_cycles, register);
+                break;
+                case Mode.ZPY:
+                    exe_cycles = this.storeByte((data + this.REG_Y) % 0xFF, exe_cycles, register);
+                break;
+                case Mode.ABS:
+                    const least_sig = this.fetch(exe_cycles);
+                    const abs_address = data | least_sig.data;
+                    exe_cycles = this.storeByte(abs_address, least_sig.cycles, register);
+                break;
+                case Mode.ABSX:
+                    const least_sigx = this.fetch(exe_cycles);
+                    const abs_addressx = data | least_sigx.data;
+                    exe_cycles = this.storeByte(abs_addressx, least_sigx.cycles, register);
+                break;
+                case Mode.ABSY:
+                    const least_sigy = this.fetch(exe_cycles);
+                    const abs_addressy = data | least_sigy.data;
+                    exe_cycles = this.storeByte(abs_addressy, least_sigy.cycles, register);
+                break;
+                default:
+                break;
+            }
+            return exe_cycles;
+        };
+        return func.bind(this);
+    }
     private load(cycles: number, reg: Register, mode: Mode): number {
         
         const register = reg;
@@ -187,6 +256,23 @@ class CPU {
         return func.bind(this);
     }
 
+    private loadABS(register: Register): (cycles: number) => number {
+        const func = (cycles: number) => { return this.load(cycles, register, Mode.ABS)}
+        return func.bind(this);
+    }
+
+    private loadABSX(register: Register): (cycles: number) => number {
+        const func = (cycles: number) => { return this.load(cycles, register, Mode.ABSX)}
+        return func.bind(this);
+    }
+
+    private loadABSY(register: Register): (cycles: number) => number {
+        const func = (cycles: number) => { return this.load(cycles, register, Mode.ABSY)}
+        return func.bind(this);
+    }
+
+
+
     private resetMemory(): void {
         this.memory.fill(0);
     }
@@ -247,6 +333,11 @@ class CPU {
         }
     }
 
+    private storeByte(address: number, cycles: number, register: Register) {
+        this.memory[address] = this[register];
+        this.REG_PC++;
+        return cycles - 1;
+    }
 
 
     public log(): void {
