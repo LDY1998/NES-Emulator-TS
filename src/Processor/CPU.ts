@@ -73,22 +73,22 @@ class CPU {
     private memory: number[];
 
     private opt_table: { [optcode: number]: (cycle: number) => number} = {
-        [Instruction_OptCode_Table.LDA_IMD] : this.loadImd(Register.REG_ACC),
-        [Instruction_OptCode_Table.LDX_IMD]: this.loadImd(Register.REG_X),
-        [Instruction_OptCode_Table.LDY_IMD]: this.loadImd(Register.REG_Y),
-        [Instruction_OptCode_Table.LDA_ZP]: this.loadZP(Register.REG_ACC),
-        [Instruction_OptCode_Table.LDX_ZP]: this.loadZP(Register.REG_X),
-        [Instruction_OptCode_Table.LDY_ZP]: this.loadZP(Register.REG_Y),
-        [Instruction_OptCode_Table.LDA_ZPX]: this.loadZPX(Register.REG_ACC),
-        [Instruction_OptCode_Table.LDY_ZPX]: this.loadZPX(Register.REG_Y),
-        [Instruction_OptCode_Table.LDX_ZPY]: this.loadZPY(Register.REG_X),
-        [Instruction_OptCode_Table.LDA_ABS]: this.loadABS(Register.REG_ACC),
-        [Instruction_OptCode_Table.LDA_ABSX]: this.loadABSX(Register.REG_ACC),
-        [Instruction_OptCode_Table.LDA_ABSY]: this.loadABSY(Register.REG_ACC),
-        [Instruction_OptCode_Table.LDX_ABS]: this.loadABS(Register.REG_X),
-        [Instruction_OptCode_Table.LDX_ABSY]: this.loadABSY(Register.REG_X),
-        [Instruction_OptCode_Table.LDY_ABS]: this.loadABS(Register.REG_Y),
-        [Instruction_OptCode_Table.LDY_ABSX]: this.loadABSX(Register.REG_Y),
+        [Instruction_OptCode_Table.LDA_IMD] : this.load(Register.REG_ACC, Mode.IMD),
+        [Instruction_OptCode_Table.LDX_IMD]: this.load(Register.REG_X, Mode.IMD),
+        [Instruction_OptCode_Table.LDY_IMD]: this.load(Register.REG_Y, Mode.IMD),
+        [Instruction_OptCode_Table.LDA_ZP]: this.load(Register.REG_ACC, Mode.ZP),
+        [Instruction_OptCode_Table.LDX_ZP]: this.load(Register.REG_X, Mode.ZP),
+        [Instruction_OptCode_Table.LDY_ZP]: this.load(Register.REG_Y, Mode.ZP),
+        [Instruction_OptCode_Table.LDA_ZPX]: this.load(Register.REG_ACC, Mode.ZPX),
+        [Instruction_OptCode_Table.LDY_ZPX]: this.load(Register.REG_Y, Mode.ZPX),
+        [Instruction_OptCode_Table.LDX_ZPY]: this.load(Register.REG_X, Mode.ZPY),
+        [Instruction_OptCode_Table.LDA_ABS]: this.load(Register.REG_ACC, Mode.ABS),
+        [Instruction_OptCode_Table.LDA_ABSX]: this.load(Register.REG_ACC, Mode.ABSX),
+        [Instruction_OptCode_Table.LDA_ABSY]: this.load(Register.REG_ACC, Mode.ABSY),
+        [Instruction_OptCode_Table.LDX_ABS]: this.load(Register.REG_X, Mode.ABS),
+        [Instruction_OptCode_Table.LDX_ABSY]: this.load(Register.REG_X, Mode.ABSY),
+        [Instruction_OptCode_Table.LDY_ABS]: this.load(Register.REG_Y, Mode.ABS),
+        [Instruction_OptCode_Table.LDY_ABSX]: this.load(Register.REG_Y, Mode.ABSX),
         [Instruction_OptCode_Table.STA_ZP]: this.store(Register.REG_ACC, Mode.ZP),
         [Instruction_OptCode_Table.STA_ZPX]: this.store(Register.REG_ACC, Mode.ZPX),
         [Instruction_OptCode_Table.STA_ABS]: this.store(Register.REG_ACC, Mode.ABS),
@@ -170,107 +170,74 @@ class CPU {
         };
         return func.bind(this);
     }
-    private load(cycles: number, reg: Register, mode: Mode): number {
+    private load(reg: Register, mode: Mode): (cycles:number) => number {
         
-        const register = reg;
-        const value = this.fetch(cycles);
-        const data = value.data;
-
-        let exe_cycles = value.cycles;
-
-
-        switch (mode) {
-            case Mode.IMD:
-                this[register] = data;
-                exe_cycles = value.cycles;
-            break;
-            case Mode.ZP:
-                const zp_value = this.readByte(data % 0x00FF, exe_cycles);
-                this[register] = zp_value.data;
-                exe_cycles = zp_value.cycles;
-            break;
-
-            // The emulation skip one cycle for calculating the sum, now it's 3 cycles
-            // for ZPX load, and should be the same for ZPY mode
-            case Mode.ZPX:
-                const zpx_value = this.readByte((data + this.REG_X) % 0xFF, exe_cycles);
-                this[register] = zpx_value.data;
-                exe_cycles = zpx_value.cycles;
-            break;
-            case Mode.ZPY:
-                const zpy_value = this.readByte((data + this.REG_Y) % 0xFF, exe_cycles);
-                this[register] = zpy_value.data;
-                exe_cycles = zpy_value.cycles;
-            break;
-
-            // Fetch 2-bytes (16 bits) address from pc first
-            // Compose them up to a 16 bits address and read the value of memory at the address
-            // 4 cycles in total
-            case Mode.ABS:
-                const least_sig = this.fetch(exe_cycles);
-                const abs_address = data | least_sig.data;
-                const abs_value = this.readByte(abs_address, least_sig.cycles);
-                this[register] = abs_value.data;
-                exe_cycles = abs_value.cycles;
-            break;
-            case Mode.ABSX:
-                const least_sigx = this.fetch(exe_cycles);
-                const abs_addressx = data | least_sigx.data;
-                const abs_valuex = this.readByte(abs_addressx + this[this.REG_X], least_sigx.cycles);
-                this[register] = abs_valuex.data;
-                exe_cycles = abs_valuex.cycles;
-            break;
-
-            case Mode.ABSY:
-                const least_sigy = this.fetch(exe_cycles);
-                const abs_addressy = data | least_sigy.data;
-                const abs_valuey = this.readByte(abs_addressy + this[this.REG_Y], least_sigy.cycles);
-                this[register] = abs_valuey.data;
-                exe_cycles = abs_valuey.cycles;
-            break;
-            default:
+        return (cycles: number) => {
+            const register = reg;
+            const value = this.fetch(cycles);
+            const data = value.data;
+    
+            let exe_cycles = value.cycles;
+    
+    
+            switch (mode) {
+                case Mode.IMD:
+                    this[register] = data;
+                    exe_cycles = value.cycles;
                 break;
-        }
-
-        this.setLoadFlag(reg);
-        return exe_cycles - 1;
+                case Mode.ZP:
+                    const zp_value = this.readByte(data % 0x00FF, exe_cycles);
+                    this[register] = zp_value.data;
+                    exe_cycles = zp_value.cycles;
+                break;
+    
+                // The emulation skip one cycle for calculating the sum, now it's 3 cycles
+                // for ZPX load, and should be the same for ZPY mode
+                case Mode.ZPX:
+                    const zpx_value = this.readByte((data + this.REG_X) % 0xFF, exe_cycles);
+                    this[register] = zpx_value.data;
+                    exe_cycles = zpx_value.cycles;
+                break;
+                case Mode.ZPY:
+                    const zpy_value = this.readByte((data + this.REG_Y) % 0xFF, exe_cycles);
+                    this[register] = zpy_value.data;
+                    exe_cycles = zpy_value.cycles;
+                break;
+    
+                // Fetch 2-bytes (16 bits) address from pc first
+                // Compose them up to a 16 bits address and read the value of memory at the address
+                // 4 cycles in total
+                case Mode.ABS:
+                    const least_sig = this.fetch(exe_cycles);
+                    const abs_address = data | least_sig.data;
+                    const abs_value = this.readByte(abs_address, least_sig.cycles);
+                    this[register] = abs_value.data;
+                    exe_cycles = abs_value.cycles;
+                break;
+                case Mode.ABSX:
+                    const least_sigx = this.fetch(exe_cycles);
+                    const abs_addressx = data | least_sigx.data;
+                    const abs_valuex = this.readByte(abs_addressx + this[this.REG_X], least_sigx.cycles);
+                    this[register] = abs_valuex.data;
+                    exe_cycles = abs_valuex.cycles;
+                break;
+    
+                case Mode.ABSY:
+                    const least_sigy = this.fetch(exe_cycles);
+                    const abs_addressy = data | least_sigy.data;
+                    const abs_valuey = this.readByte(abs_addressy + this[this.REG_Y], least_sigy.cycles);
+                    this[register] = abs_valuey.data;
+                    exe_cycles = abs_valuey.cycles;
+                break;
+                default:
+                break;
+            }
+    
+            this.setLoadFlag(reg);
+            return exe_cycles - 1;
+        };
+        
     }
-
-    private loadZP(register: Register): (cycles: number) => number {
-        const func = (cycles: number) => { return this.load(cycles, register, Mode.ZP)}
-        return func.bind(this);
-    }
-
-    private loadImd(register: Register): (cycles: number) => number {
-        const func = (cycles: number) => { return this.load(cycles, register, Mode.IMD)}
-        return func.bind(this);
-    }
-
-    private loadZPX(register: Register): (cycles: number) => number {
-        const func = (cycles: number) => { return this.load(cycles, register, Mode.ZPX)}
-        return func.bind(this);
-    }
-
-    private loadZPY(register: Register): (cycles: number) => number {
-        const func = (cycles: number) => { return this.load(cycles, register, Mode.ZPY)}
-        return func.bind(this);
-    }
-
-    private loadABS(register: Register): (cycles: number) => number {
-        const func = (cycles: number) => { return this.load(cycles, register, Mode.ABS)}
-        return func.bind(this);
-    }
-
-    private loadABSX(register: Register): (cycles: number) => number {
-        const func = (cycles: number) => { return this.load(cycles, register, Mode.ABSX)}
-        return func.bind(this);
-    }
-
-    private loadABSY(register: Register): (cycles: number) => number {
-        const func = (cycles: number) => { return this.load(cycles, register, Mode.ABSY)}
-        return func.bind(this);
-    }
-
 
 
     private resetMemory(): void {
