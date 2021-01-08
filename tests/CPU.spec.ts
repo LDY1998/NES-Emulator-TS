@@ -73,6 +73,94 @@ describe("CPU Testing", () => {
 
             
         });
+
+        describe("Loading ZPX/Y", () => {
+
+            it("Loading ZPX positive", () => {
+                cpu.setMemory(cpu.getPC(), Instruction_OptCode_Table.LDY_ZPX);
+                cpu.setMemory(cpu.getPC()+1, 0xF1);
+                cpu.setRegister(Register.REG_X, 0x01);
+                cpu.setMemory(0xF2, 0x01);
+                cpu.execute(3);
+                expect(cpu.getPC()).equal(initial_pc+3);
+                expect(cpu.getRegister(Register.REG_X)).equal(0x01);
+                expect(cpu.getRegister(Register.REG_Y)).equal(0x01);
+                expect(cpu.getStatus("negative")).equal(0);
+                expect(cpu.getStatus("zero")).equal(0);
+            });
+
+            it("Loading ZPY negative", () => {
+                cpu.setMemory(cpu.getPC(), Instruction_OptCode_Table.LDX_ZPY);
+                cpu.setMemory(cpu.getPC()+1, 0xF1);
+                cpu.setRegister(Register.REG_Y, 0x01);
+                cpu.setMemory(0xF2, 0xF1);
+                cpu.execute(3);
+                expect(cpu.getPC()).equal(initial_pc+3);
+                expect(cpu.getRegister(Register.REG_Y)).equal(0x01);
+                expect(cpu.getRegister(Register.REG_X)).equal(0xF1);
+                expect(cpu.getStatus("negative")).equal(1);
+                expect(cpu.getStatus("zero")).equal(0);
+            });
+
+            
+        });
+
+        describe("Loading ABS", () => {
+
+            it("Loading ABS positive", () => {
+                cpu.setMemory(cpu.getPC(), Instruction_OptCode_Table.LDA_ABS);
+                cpu.setMemory(cpu.getPC()+1, 0xF1);
+                cpu.setMemory(cpu.getPC()+2, 0x01);
+                cpu.setMemory(0xF101, 0x01);
+                cpu.execute(4);
+                expect(cpu.getPC()).equal(initial_pc+4);
+                expect(cpu.getRegister(Register.REG_ACC)).equal(0x01);
+                expect(cpu.getStatus("negative")).equal(0);
+                expect(cpu.getStatus("zero")).equal(0);
+            });
+
+            it("Loading ABS negative", () => {
+                cpu.setMemory(cpu.getPC(), Instruction_OptCode_Table.LDY_ABS);
+                cpu.setMemory(cpu.getPC()+1, 0x01);
+                cpu.setMemory(cpu.getPC()+2, 0x01);
+                cpu.setMemory(0x0101, 0xF1);
+                cpu.execute(4);
+                expect(cpu.getPC()).equal(initial_pc+4);
+                expect(cpu.getRegister(Register.REG_Y)).equal(0xF1);
+                expect(cpu.getStatus("negative")).equal(1);
+                expect(cpu.getStatus("zero")).equal(0);
+            });
+
+            
+        });
+
+        describe("Loading ABSX/Y", () => {
+            it("Loading ABSX negative", () => {
+                cpu.setMemory(cpu.getPC(), Instruction_OptCode_Table.LDY_ABSX);
+                cpu.setMemory(cpu.getPC()+1, 0x00);
+                cpu.setMemory(cpu.getPC()+2, 0x01);
+                cpu.setRegister(Register.REG_X, 0x01);
+                cpu.setMemory(0x02, 0x80);
+                cpu.execute(4);
+                expect(cpu.getPC()).equal(initial_pc+4);
+                expect(cpu.getRegister(Register.REG_Y)).equal(0x80);
+                expect(cpu.getStatus("negative")).equal(1);
+                expect(cpu.getStatus("zero")).equal(0);
+            });
+
+            it("Loading ABSY zero", () => {
+                cpu.setMemory(cpu.getPC(), Instruction_OptCode_Table.LDX_ABSY);
+                cpu.setMemory(cpu.getPC()+1, 0x00);
+                cpu.setMemory(cpu.getPC()+2, 0x01);
+                cpu.setRegister(Register.REG_X, 0x01);
+                cpu.setMemory(0x02, 0x00);
+                cpu.execute(4);
+                expect(cpu.getPC()).equal(initial_pc+4);
+                expect(cpu.getRegister(Register.REG_Y)).equal(0);
+                expect(cpu.getStatus("negative")).equal(0);
+                expect(cpu.getStatus("zero")).equal(1);
+            });
+        });
     });
 
 });

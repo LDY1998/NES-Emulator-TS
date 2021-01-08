@@ -209,23 +209,23 @@ class CPU {
                 // 4 cycles in total
                 case Mode.ABS:
                     const least_sig = this.fetch(exe_cycles);
-                    const abs_address = data | least_sig.data;
+                    const abs_address = data << 8 | least_sig.data;
                     const abs_value = this.readByte(abs_address, least_sig.cycles);
                     this[register] = abs_value.data;
                     exe_cycles = abs_value.cycles;
                 break;
                 case Mode.ABSX:
                     const least_sigx = this.fetch(exe_cycles);
-                    const abs_addressx = data | least_sigx.data;
-                    const abs_valuex = this.readByte(abs_addressx + this[this.REG_X], least_sigx.cycles);
+                    const abs_addressx = data << 8 | least_sigx.data;
+                    const abs_valuex = this.readByte(abs_addressx + this.REG_X, least_sigx.cycles);
                     this[register] = abs_valuex.data;
                     exe_cycles = abs_valuex.cycles;
                 break;
     
                 case Mode.ABSY:
                     const least_sigy = this.fetch(exe_cycles);
-                    const abs_addressy = data | least_sigy.data;
-                    const abs_valuey = this.readByte(abs_addressy + this[this.REG_Y], least_sigy.cycles);
+                    const abs_addressy = data << 8 | least_sigy.data;
+                    const abs_valuey = this.readByte(abs_addressy + this.REG_Y, least_sigy.cycles);
                     this[register] = abs_valuey.data;
                     exe_cycles = abs_valuey.cycles;
                 break;
