@@ -30,7 +30,13 @@ enum Instruction_OptCode_Table {
     STA_ZPX = 0x95,
     STA_ABS = 0x8D,
     STA_ABSX = 0x9D,
-    STA_ABSY = 0x99
+    STA_ABSY = 0x99,
+    TAX = 0xAA,
+    TAY = 0xA8,
+    TSX = 0xBA,
+    TXA = 0x8A,
+    TXS = 0x9A,
+    TYA = 0x98
 }
 
 
@@ -94,7 +100,12 @@ class CPU {
         [Instruction_OptCode_Table.STA_ABS]: this.store(Register.REG_ACC, Mode.ABS),
         [Instruction_OptCode_Table.STA_ABSX]: this.store(Register.REG_ACC, Mode.ABSX),
         [Instruction_OptCode_Table.STA_ABSY]: this.store(Register.REG_ACC, Mode.ABSY),
-        0x00: () => {throw new Error("Not correct optcode!!!");}
+        [Instruction_OptCode_Table.TAX]: this.transfer(Register.REG_ACC, Register.REG_X),
+        [Instruction_OptCode_Table.TXA]: this.transfer(Register.REG_X, Register.REG_ACC),
+        [Instruction_OptCode_Table.TAY]: this.transfer(Register.REG_ACC, Register.REG_Y),
+        [Instruction_OptCode_Table.TYA]: this.transfer(Register.REG_Y, Register.REG_ACC),
+        [Instruction_OptCode_Table.TXS]: this.transfer(Register.REG_X, Register.REG_SP),
+        [Instruction_OptCode_Table.TSX]: this.transfer(Register.REG_SP, Register.REG_X)
     };
 
 
@@ -125,13 +136,26 @@ class CPU {
 
     /**
      * 
+     * @param src Register to read value from
+     * @param dest Register to transfer value to
+     */
+    private transfer(src: Register, dest: Register): (cycles: number) => number {
+
+        return (cycles: number) => {
+            this[dest] = this[src];
+            this.setLoadFlag(dest);
+            return cycles - 1;
+        }
+    }
+    /**
+     * 
      * @param cycles cycles needed
      * @param reg register to store
      * @param mode address looking mode
      */
     private store(reg: Register, mode: Mode): (cycles: number) => number {
 
-        const func: (cycles: number) => number = (cycles: number) => {
+        return (cycles: number) => {
             const register = reg;
             const value = this.fetch(cycles);
             const data = value.data;
@@ -168,7 +192,6 @@ class CPU {
             }
             return exe_cycles;
         };
-        return func.bind(this);
     }
     private load(reg: Register, mode: Mode): (cycles:number) => number {
         
@@ -265,6 +288,9 @@ class CPU {
             const instruction = fetched.data;
             exe_cycles = fetched.cycles;
 
+            if (!(instruction in this.opt_table)) {
+                throw new Error("Not correct optcode!!!");
+            }
             // When calling a function from a object entry, this needs to rebind to class
             // Otherwise this will be the object itself (i.e. opt_table)
             const method = this.opt_table[instruction].bind(this);
