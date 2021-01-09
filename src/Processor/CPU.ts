@@ -36,7 +36,13 @@ enum Instruction_OptCode_Table {
     TSX = 0xBA,
     TXA = 0x8A,
     TXS = 0x9A,
-    TYA = 0x98
+    TYA = 0x98,
+    ADC_IMD = 0x69,
+    ADC_ZP = 0x65,
+    ADC_ZPX = 0x75,
+    ADC_ABS = 0x6D,
+    ADC_ABSX = 0x7D,
+    ADC_ABSY = 0x79
 }
 
 
@@ -72,9 +78,7 @@ class CPU {
     private REG_Y: number;
     private REG_SP: number;
     private REG_ACC: number;
-
     private REG_PC: number;
-    // private REG_PC_NEW: number;
 
     private memory: number[];
 
@@ -105,7 +109,13 @@ class CPU {
         [Instruction_OptCode_Table.TAY]: this.transfer(Register.REG_ACC, Register.REG_Y),
         [Instruction_OptCode_Table.TYA]: this.transfer(Register.REG_Y, Register.REG_ACC),
         [Instruction_OptCode_Table.TXS]: this.transfer(Register.REG_X, Register.REG_SP),
-        [Instruction_OptCode_Table.TSX]: this.transfer(Register.REG_SP, Register.REG_X)
+        [Instruction_OptCode_Table.TSX]: this.transfer(Register.REG_SP, Register.REG_X),
+        [Instruction_OptCode_Table.ADC_IMD]: this.add(Mode.IMD),
+        [Instruction_OptCode_Table.ADC_ZP]: this.add(Mode.ZP),
+        [Instruction_OptCode_Table.ADC_ZPX]: this.add(Mode.ZPX),
+        [Instruction_OptCode_Table.ADC_ABS]: this.add(Mode.ABS),
+        [Instruction_OptCode_Table.ADC_ABSX]: this.add(Mode.ABSX),
+        [Instruction_OptCode_Table.ADC_ABSY]: this.add(Mode.ABSY),
     };
 
 
@@ -146,6 +156,93 @@ class CPU {
             this.setLoadFlag(dest);
             return cycles - 1;
         }
+    }
+
+
+    private addAndSetFlag(num1: number, num2: number): number {
+        const sign1 = num1 >> 7 & 0x01;
+        const sign2 = num2 >> 7 & 0x01;
+        const res = num1 + num2 + this.status["carry"];
+        const sign_res = res >> 7 & 0x01;
+
+        this.status["overflow"] = (sign1 && sign2 && !sign_res) || (!sign1 && !sign2 && sign_res)? 1 : 0;
+        this.status["carry"] = res > 0xFF ? 1 : 0;
+        this.status["negative"] = sign_res;
+
+
+        return (res & 0xFF);
+    }
+
+    private add(mode: Mode): (cycles: number) => number {
+        return (cycles: number) => {
+
+            const value = this.fetch(cycles);
+            const data = value.data;
+
+            let exe_cycles = value.cycles;
+    
+            switch (mode) {
+                case Mode.IMD:
+                    this.REG_ACC = this.addAndSetFlag(data, this.REG_ACC);
+                break;
+
+                case Mode.ZP:
+                    const readed = this.getMemory(data, exe_cycles);
+                    this.REG_ACC = this.addAndSetFlag(readed.data, this.REG_ACC);
+                    // Cycle for reading the memory
+                    exe_cycles = readed.cycle;
+                break;
+
+                case Mode.ZPX:
+                    const readedx = this.getMemory((data + this.REG_X) && 0xFF, exe_cycles);
+                    this.REG_ACC = this.addAndSetFlag(readedx.data, this.REG_ACC);
+                    exe_cycles = readedx.cycle;
+                break;
+
+                case Mode.ZPY:
+                    const readedy = this.getMemory((data + this.REG_Y) && 0xFF, exe_cycles);
+                    this.REG_ACC = this.addAndSetFlag(readedy.data, this.REG_ACC);
+                    exe_cycles = readedx.cycle;
+                break;
+
+                case Mode.ABS:
+                    const least_sig = this.fetch(exe_cycles);
+                    const abs_address = data << 8 | least_sig.data;
+                    const readed_abs = this.getMemory(abs_address, least_sig.cycles);
+                    this.REG_ACC = this.addAndSetFlag(readed_abs.data, this.REG_ACC);
+                    exe_cycles = readed_abs.cycle;
+                break;
+                case Mode.ABSX:
+                    const least_sigx = this.fetch(exe_cycles);
+                    const abs_addressx = data << 8 | least_sigx.data;
+                    const readed_absx = this.getMemory((abs_addressx + this.REG_X) && 0xFFFF, least_sig.cycles);
+                    this.REG_ACC = this.addAndSetFlag(readed_absx.data, this.REG_ACC);
+                    exe_cycles = readed_absx.cycle;
+                break;
+
+                case Mode.ABSY:
+                    const least_sigy = this.fetch(exe_cycles);
+                    const abs_addressy = data << 8 | least_sigy.data;
+                    const readed_absy = this.getMemory((abs_addressy + this.REG_X) && 0xFFFF, least_sig.cycles);
+                    this.REG_ACC = this.addAndSetFlag(readed_absy.data, this.REG_ACC);
+                    exe_cycles = readed_absy.cycle;
+                break;
+                default:
+                break;
+            }
+
+            
+            return exe_cycles;
+        };
+    }
+
+
+
+    private getMemory(address: number, cycles: number) {
+        return {
+            "data": this.memory[address],
+            "cycle": cycles - 1
+        };
     }
     /**
      * 
@@ -259,7 +356,6 @@ class CPU {
             this.setLoadFlag(reg);
             return exe_cycles - 1;
         };
-        
     }
 
 
