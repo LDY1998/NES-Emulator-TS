@@ -31,6 +31,12 @@ enum Instruction_OptCode_Table {
     STA_ABS = 0x8D,
     STA_ABSX = 0x9D,
     STA_ABSY = 0x99,
+    STX_ZP = 0x86,
+    STX_ZPY = 0x96,
+    STX_ABS = 0x8E,
+    STY_ZP = 0x84,
+    STY_ZPX = 0x94,
+    STY_ABS = 0x8C,
     TAX = 0xAA,
     TAY = 0xA8,
     TSX = 0xBA,
@@ -104,6 +110,12 @@ class CPU {
         [Instruction_OptCode_Table.STA_ABS]: this.store(Register.REG_ACC, Mode.ABS),
         [Instruction_OptCode_Table.STA_ABSX]: this.store(Register.REG_ACC, Mode.ABSX),
         [Instruction_OptCode_Table.STA_ABSY]: this.store(Register.REG_ACC, Mode.ABSY),
+        [Instruction_OptCode_Table.STX_ZP]: this.store(Register.REG_X, Mode.ZP),
+        [Instruction_OptCode_Table.STX_ZPY]: this.store(Register.REG_X, Mode.ZPY),
+        [Instruction_OptCode_Table.STX_ABS]: this.store(Register.REG_X, Mode.ABS),
+        [Instruction_OptCode_Table.STY_ZP]: this.store(Register.REG_Y, Mode.ZP),
+        [Instruction_OptCode_Table.STY_ZPX]: this.store(Register.REG_Y, Mode.ZPX),
+        [Instruction_OptCode_Table.STY_ABS]: this.store(Register.REG_Y, Mode.ABS),
         [Instruction_OptCode_Table.TAX]: this.transfer(Register.REG_ACC, Register.REG_X),
         [Instruction_OptCode_Table.TXA]: this.transfer(Register.REG_X, Register.REG_ACC),
         [Instruction_OptCode_Table.TAY]: this.transfer(Register.REG_ACC, Register.REG_Y),
@@ -407,7 +419,7 @@ class CPU {
 
     private readByte(address: number, cycles: number) {
         const data = this.memory[address];
-        this.REG_PC++;
+        // this.REG_PC++;
         return {
             "data": data,
             "cycles": cycles - 1
@@ -416,7 +428,7 @@ class CPU {
 
     private storeByte(address: number, cycles: number, register: Register) {
         this.memory[address] = this[register];
-        this.REG_PC++;
+        // this.REG_PC++;
         return cycles - 1;
     }
 
@@ -431,6 +443,10 @@ class CPU {
                 return;
             console.log(`${entry[0]}: ${entry[1]} \n`);
         });
+    }
+
+    public getMemory(address: number): number {
+        return this.memory[address];
     }
 
     public getPC(): number {

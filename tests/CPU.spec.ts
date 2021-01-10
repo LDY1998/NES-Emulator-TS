@@ -54,7 +54,7 @@ describe("CPU Testing", () => {
                 cpu.setMemory(cpu.getPC()+1, 0xF1);
                 cpu.setMemory(0xF1, 0x01);
                 cpu.execute(3);
-                expect(cpu.getPC()).equal(initial_pc+3);
+                expect(cpu.getPC()).equal(initial_pc+2);
                 expect(cpu.getRegister(Register.REG_X)).equal(0x01);
                 expect(cpu.getStatus("negative")).equal(0);
                 expect(cpu.getStatus("zero")).equal(0);
@@ -65,7 +65,7 @@ describe("CPU Testing", () => {
                 cpu.setMemory(cpu.getPC()+1, 0xF1);
                 cpu.setMemory(0xF1, 0xF1);
                 cpu.execute(3);
-                expect(cpu.getPC()).equal(initial_pc+3);
+                expect(cpu.getPC()).equal(initial_pc+2);
                 expect(cpu.getRegister(Register.REG_Y)).equal(0xF1);
                 expect(cpu.getStatus("negative")).equal(1);
                 expect(cpu.getStatus("zero")).equal(0);
@@ -82,7 +82,7 @@ describe("CPU Testing", () => {
                 cpu.setRegister(Register.REG_X, 0x01);
                 cpu.setMemory(0xF2, 0x01);
                 cpu.execute(3);
-                expect(cpu.getPC()).equal(initial_pc+3);
+                expect(cpu.getPC()).equal(initial_pc+2);
                 expect(cpu.getRegister(Register.REG_X)).equal(0x01);
                 expect(cpu.getRegister(Register.REG_Y)).equal(0x01);
                 expect(cpu.getStatus("negative")).equal(0);
@@ -95,7 +95,7 @@ describe("CPU Testing", () => {
                 cpu.setRegister(Register.REG_Y, 0x01);
                 cpu.setMemory(0xF2, 0xF1);
                 cpu.execute(3);
-                expect(cpu.getPC()).equal(initial_pc+3);
+                expect(cpu.getPC()).equal(initial_pc+2);
                 expect(cpu.getRegister(Register.REG_Y)).equal(0x01);
                 expect(cpu.getRegister(Register.REG_X)).equal(0xF1);
                 expect(cpu.getStatus("negative")).equal(1);
@@ -113,7 +113,7 @@ describe("CPU Testing", () => {
                 cpu.setMemory(cpu.getPC()+2, 0x01);
                 cpu.setMemory(0xF101, 0x01);
                 cpu.execute(4);
-                expect(cpu.getPC()).equal(initial_pc+4);
+                expect(cpu.getPC()).equal(initial_pc+3);
                 expect(cpu.getRegister(Register.REG_ACC)).equal(0x01);
                 expect(cpu.getStatus("negative")).equal(0);
                 expect(cpu.getStatus("zero")).equal(0);
@@ -125,7 +125,7 @@ describe("CPU Testing", () => {
                 cpu.setMemory(cpu.getPC()+2, 0x01);
                 cpu.setMemory(0x0101, 0xF1);
                 cpu.execute(4);
-                expect(cpu.getPC()).equal(initial_pc+4);
+                expect(cpu.getPC()).equal(initial_pc+3);
                 expect(cpu.getRegister(Register.REG_Y)).equal(0xF1);
                 expect(cpu.getStatus("negative")).equal(1);
                 expect(cpu.getStatus("zero")).equal(0);
@@ -142,7 +142,7 @@ describe("CPU Testing", () => {
                 cpu.setRegister(Register.REG_X, 0x01);
                 cpu.setMemory(0x02, 0x80);
                 cpu.execute(4);
-                expect(cpu.getPC()).equal(initial_pc+4);
+                expect(cpu.getPC()).equal(initial_pc+3);
                 expect(cpu.getRegister(Register.REG_Y)).equal(0x80);
                 expect(cpu.getStatus("negative")).equal(1);
                 expect(cpu.getStatus("zero")).equal(0);
@@ -155,12 +155,61 @@ describe("CPU Testing", () => {
                 cpu.setRegister(Register.REG_X, 0x01);
                 cpu.setMemory(0x02, 0x00);
                 cpu.execute(4);
-                expect(cpu.getPC()).equal(initial_pc+4);
+                expect(cpu.getPC()).equal(initial_pc+3);
                 expect(cpu.getRegister(Register.REG_Y)).equal(0);
                 expect(cpu.getStatus("negative")).equal(0);
                 expect(cpu.getStatus("zero")).equal(1);
             });
         });
+    });
+
+
+    describe("Store testing", () => {
+
+
+        it("Storing ZP", () => {
+            cpu.setMemory(cpu.getPC(), Instruction_OptCode_Table.STA_ZP);
+            cpu.setMemory(cpu.getPC()+1, 0x01);
+            cpu.setRegister(Register.REG_ACC, 0x80);
+            cpu.execute(3);
+            expect(cpu.getPC()).equal(initial_pc+2);
+            expect(cpu.getMemory(0x01)).equal(0x80);
+            expect(cpu.getStatus("negative")).equal(0);
+        });
+
+        it("Storeing ZPX", () => {
+            cpu.setMemory(cpu.getPC(), Instruction_OptCode_Table.STY_ZPX);
+            cpu.setMemory(cpu.getPC()+1, 0x01);
+            cpu.setRegister(Register.REG_Y, 0x80);
+            cpu.setRegister(Register.REG_X, 0x01);
+            cpu.execute(3);
+            expect(cpu.getPC()).equal(initial_pc+2);
+            expect(cpu.getMemory(0x02)).equal(0x80);
+            expect(cpu.getStatus("negative")).equal(0);
+        });
+
+        it("Storeing ZPY", () => {
+            cpu.setMemory(cpu.getPC(), Instruction_OptCode_Table.STX_ZPY);
+            cpu.setMemory(cpu.getPC()+1, 0x01);
+            cpu.setRegister(Register.REG_X, 0x80);
+            cpu.setRegister(Register.REG_Y, 0x01);
+            cpu.execute(3);
+            expect(cpu.getPC()).equal(initial_pc+2);
+            expect(cpu.getMemory(0x02)).equal(0x80);
+            expect(cpu.getStatus("negative")).equal(0);
+        });
+
+        it("Storing ABS", () => {
+            cpu.setMemory(cpu.getPC(), Instruction_OptCode_Table.STA_ABS);
+            cpu.setMemory(cpu.getPC()+1, 0x01);
+            cpu.setMemory(cpu.getPC()+2, 0x01);
+            cpu.setRegister(Register.REG_ACC, 0x80);
+            cpu.execute(4);
+            expect(cpu.getPC()).equal(initial_pc+3);
+            expect(cpu.getMemory(0x03)).equal(0x80);
+            expect(cpu.getStatus("negative")).equal(0);
+        })
+
     });
 
 });
