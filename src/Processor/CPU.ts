@@ -275,17 +275,17 @@ class CPU {
                 break;
                 case Mode.ABS:
                     const least_sig = this.fetch(exe_cycles);
-                    const abs_address = data | least_sig.data;
+                    const abs_address = data << 8 | least_sig.data;
                     exe_cycles = this.storeByte(abs_address, least_sig.cycles, register);
                 break;
                 case Mode.ABSX:
                     const least_sigx = this.fetch(exe_cycles);
-                    const abs_addressx = data | least_sigx.data;
+                    const abs_addressx = data << 8 | least_sigx.data;
                     exe_cycles = this.storeByte(abs_addressx, least_sigx.cycles, register);
                 break;
                 case Mode.ABSY:
                     const least_sigy = this.fetch(exe_cycles);
-                    const abs_addressy = data | least_sigy.data;
+                    const abs_addressy = data << 8 | least_sigy.data;
                     exe_cycles = this.storeByte(abs_addressy, least_sigy.cycles, register);
                 break;
                 default:

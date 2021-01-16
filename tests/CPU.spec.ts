@@ -206,10 +206,19 @@ describe("CPU Testing", () => {
             cpu.setRegister(Register.REG_ACC, 0x80);
             cpu.execute(4);
             expect(cpu.getPC()).equal(initial_pc+3);
-            expect(cpu.getMemory(0x03)).equal(0x80);
+            expect(cpu.getMemory(0x0101)).equal(0x80);
             expect(cpu.getStatus("negative")).equal(0);
-        })
+        });
 
     });
+
+    describe("Testing Transfer", () => {
+        it("Transfer x to sp", () => {
+            cpu.setRegister(Register.REG_X, 0x01);
+            cpu.setMemory(initial_pc, Instruction_OptCode_Table.TXS);
+            cpu.execute(2);
+            expect(cpu.getRegister(Register.REG_SP)).equal(0x01);
+        })
+    })
 
 });
