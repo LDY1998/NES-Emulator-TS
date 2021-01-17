@@ -1,68 +1,7 @@
+import { Instruction_OptCode_Table, Register, Mode } from "../Util";
 
 
 
-enum Register {
-    REG_X = "REG_X",
-    REG_Y = "REG_Y",
-    REG_SP = "REG_SP",
-    REG_ACC = "REG_ACC",
-    REG_PC = "REG_PC"
-}
-
-enum Instruction_OptCode_Table {
-    LDA_IMD = 0xA9,
-    LDX_IMD = 0xA2,
-    LDY_IMD = 0xA0,
-    LDA_ZP = 0xA5,
-    LDX_ZP = 0xA6,
-    LDY_ZP = 0xA4,
-    LDA_ZPX = 0XB5,
-    LDY_ZPX = 0xB4,
-    LDX_ZPY = 0xB6,
-    LDA_ABS = 0xAD,
-    LDA_ABSX = 0xBD,
-    LDA_ABSY = 0xB9,
-    LDX_ABS = 0xAE,
-    LDX_ABSY = 0xBE,
-    LDY_ABS = 0xAC,
-    LDY_ABSX = 0xBC,
-    STA_ZP = 0x85,
-    STA_ZPX = 0x95,
-    STA_ABS = 0x8D,
-    STA_ABSX = 0x9D,
-    STA_ABSY = 0x99,
-    STX_ZP = 0x86,
-    STX_ZPY = 0x96,
-    STX_ABS = 0x8E,
-    STY_ZP = 0x84,
-    STY_ZPX = 0x94,
-    STY_ABS = 0x8C,
-    TAX = 0xAA,
-    TAY = 0xA8,
-    TSX = 0xBA,
-    TXA = 0x8A,
-    TXS = 0x9A,
-    TYA = 0x98,
-    ADC_IMD = 0x69,
-    ADC_ZP = 0x65,
-    ADC_ZPX = 0x75,
-    ADC_ABS = 0x6D,
-    ADC_ABSX = 0x7D,
-    ADC_ABSY = 0x79
-}
-
-
-enum Mode {
-    IMD,
-    ZP,
-    ZPX,
-    ZPY,
-    ABS,
-    ABSX,
-    ABSY,
-    IDX,
-    IDY
-}
 /**
  * A chip-8 CPU emulator
  */
@@ -128,6 +67,18 @@ class CPU {
         [Instruction_OptCode_Table.ADC_ABS]: this.add(Mode.ABS),
         [Instruction_OptCode_Table.ADC_ABSX]: this.add(Mode.ABSX),
         [Instruction_OptCode_Table.ADC_ABSY]: this.add(Mode.ABSY),
+        [Instruction_OptCode_Table.AND_IMD]: this.logicalAnd(Mode.IMD),
+        [Instruction_OptCode_Table.AND_ZP]: this.logicalAnd(Mode.ZP),
+        [Instruction_OptCode_Table.AND_ZPX]: this.logicalAnd(Mode.ZPX),
+        [Instruction_OptCode_Table.AND_ABS]: this.logicalAnd(Mode.ABS),
+        [Instruction_OptCode_Table.AND_ABSX]: this.logicalAnd(Mode.ABSX),
+        [Instruction_OptCode_Table.AND_ABSY]: this.logicalAnd(Mode.ABSY),
+        [Instruction_OptCode_Table.EOR_IMD]: this.logicalEor(Mode.IMD),
+        [Instruction_OptCode_Table.EOR_ZP]: this.logicalEor(Mode.ZP),
+        [Instruction_OptCode_Table.EOR_ZPX]: this.logicalEor(Mode.ZPX),
+        [Instruction_OptCode_Table.EOR_ABS]: this.logicalEor(Mode.ZPY),
+        [Instruction_OptCode_Table.EOR_ABSX]: this.logicalEor(Mode.ABSX),
+        [Instruction_OptCode_Table.EOR_ABSY]: this.logicalEor(Mode.ABSY)
     };
 
 
@@ -150,11 +101,143 @@ class CPU {
     }
 
 
-    private setLoadFlag (register: Register): void {
-        this.status.zero = this[register] === 0 ? 1 : 0;
-        this.status.negative = this[register] >> 7 & 0x01;
+    private setArithmaticFlag (res: number): void {
+        this.status.zero = res === 0 ? 1 : 0;
+        this.status.negative = res >> 7 & 0x01;
     }
 
+
+    private logicalEor (mode: Mode) : (cycles: number) => number {
+
+        return (cycles: number) => {
+            const value = this.fetch(cycles);
+
+            const data = value.data;
+            let exe_cycles = value.cycles;
+
+            switch (mode) {
+                case Mode.IMD:
+                    this.REG_ACC = this.REG_ACC && data;
+                    exe_cycles - 1;
+                break;
+
+                case Mode.ZP:
+                    const readedZP = this.readByte(data, exe_cycles);
+                    this.REG_ACC = this.REG_ACC ^ readedZP.data;
+                    exe_cycles = readedZP.cycles;
+                break;
+
+                case Mode.ZPX:
+                    const readedZPX = this.readByte((data + this.REG_X) % 0xFF, exe_cycles);
+                    this.REG_ACC = this.REG_ACC ^ readedZPX.data;
+                    exe_cycles = readedZPX.cycles;
+                break;
+
+                case Mode.ABS:
+                    const least_sig = this.fetch(exe_cycles);
+                    const abs_address = data << 8 | least_sig.data;
+                    exe_cycles = least_sig.cycles;
+                    const readed_abs = this.readByte(abs_address, exe_cycles);
+                    this.REG_ACC = this.REG_ACC ^ readed_abs.data;
+                    exe_cycles = readed_abs.cycles;
+                break;
+
+                case Mode.ABSX:
+                    const least_sigx = this.fetch(exe_cycles);
+                    const abs_addressx = (data << 8 | least_sigx.data) + this.REG_X;
+                    exe_cycles = least_sigx.cycles;
+                    const readed_absx = this.readByte(abs_addressx, exe_cycles);
+                    this.REG_ACC = this.REG_ACC ^ readed_absx.data;
+                    exe_cycles = readed_absx.cycles;
+                break;
+
+                case Mode.ABSY:
+                    const least_sigy = this.fetch(exe_cycles);
+                    const abs_addressy = (data << 8 | least_sigy.data) + this.REG_Y;
+                    exe_cycles = least_sigy.cycles;
+                    const readed_absy = this.readByte(abs_addressy, exe_cycles);
+                    this.REG_ACC = this.REG_ACC ^ readed_absy.data;
+                    exe_cycles = readed_absy.cycles;
+                break;
+
+
+                default:
+                    break;
+            }
+
+            this.setArithmaticFlag(this.REG_ACC);
+
+            return exe_cycles;
+        }
+    }
+
+    /**
+     * 
+     * @param mode address mode for instruction
+     * @returns function which perform instruction and consume cycle
+     */
+    private logicalAnd(mode: Mode) : (cycles: number) => number {
+        return (cycles: number) => {
+            const value = this.fetch(cycles);
+
+            const data = value.data;
+            let exe_cycles = value.cycles;
+
+            switch (mode) {
+                case Mode.IMD:
+                    this.REG_ACC = this.REG_ACC && data;
+                    exe_cycles - 1;
+                break;
+
+                case Mode.ZP:
+                    const readedZP = this.readByte(data, exe_cycles);
+                    this.REG_ACC = this.REG_ACC && readedZP.data;
+                    exe_cycles = readedZP.cycles;
+                break;
+
+                case Mode.ZPX:
+                    const readedZPX = this.readByte((data + this.REG_X) % 0xFF, exe_cycles);
+                    this.REG_ACC = this.REG_ACC && readedZPX.data;
+                    exe_cycles = readedZPX.cycles;
+                break;
+
+                case Mode.ABS:
+                    const least_sig = this.fetch(exe_cycles);
+                    const abs_address = data << 8 | least_sig.data;
+                    exe_cycles = least_sig.cycles;
+                    const readed_abs = this.readByte(abs_address, exe_cycles);
+                    this.REG_ACC = this.REG_ACC && readed_abs.data;
+                    exe_cycles = readed_abs.cycles;
+                break;
+
+                case Mode.ABSX:
+                    const least_sigx = this.fetch(exe_cycles);
+                    const abs_addressx = (data << 8 | least_sigx.data) + this.REG_X;
+                    exe_cycles = least_sigx.cycles;
+                    const readed_absx = this.readByte(abs_addressx, exe_cycles);
+                    this.REG_ACC = this.REG_ACC && readed_absx.data;
+                    exe_cycles = readed_absx.cycles;
+                break;
+
+                case Mode.ABSY:
+                    const least_sigy = this.fetch(exe_cycles);
+                    const abs_addressy = (data << 8 | least_sigy.data) + this.REG_Y;
+                    exe_cycles = least_sigy.cycles;
+                    const readed_absy = this.readByte(abs_addressy, exe_cycles);
+                    this.REG_ACC = this.REG_ACC && readed_absy.data;
+                    exe_cycles = readed_absy.cycles;
+                break;
+
+
+                default:
+                    break;
+            }
+
+            this.setArithmaticFlag(this.REG_ACC);
+
+            return exe_cycles;
+        }
+    }
 
     /**
      * 
@@ -165,7 +248,7 @@ class CPU {
 
         return (cycles: number) => {
             this[dest] = this[src];
-            this.setLoadFlag(dest);
+            this.setArithmaticFlag(this[dest]);
             return cycles - 1;
         }
     }
@@ -357,7 +440,7 @@ class CPU {
                 break;
             }
     
-            this.setLoadFlag(reg);
+            this.setArithmaticFlag(this[reg]);
             return exe_cycles - 1;
         };
     }
@@ -467,7 +550,5 @@ class CPU {
 
 
 export {
-    CPU,
-    Instruction_OptCode_Table,
-    Register
+    CPU
 }

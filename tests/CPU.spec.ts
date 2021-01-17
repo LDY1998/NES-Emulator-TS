@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { CPU, Instruction_OptCode_Table, Register } from "../src/Processor/CPU";
-
+import { Instruction_OptCode_Table, Register } from "../src/Util";
+import { CPU } from "../src/Processor/CPU";
 
 
 describe("CPU Testing", () => {
