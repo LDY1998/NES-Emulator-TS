@@ -1,5 +1,5 @@
-import { recursive_log } from "./Util";
-import { CPU, Instruction_OptCode_Table } from "./Processor/CPU";
+import { recursive_log, Instruction_OptCode_Table} from "./Util";
+import { CPU } from "./Processor/CPU";
 
 
 /**

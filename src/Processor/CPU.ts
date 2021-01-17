@@ -78,7 +78,13 @@ class CPU {
         [Instruction_OptCode_Table.EOR_ZPX]: this.logicalEor(Mode.ZPX),
         [Instruction_OptCode_Table.EOR_ABS]: this.logicalEor(Mode.ZPY),
         [Instruction_OptCode_Table.EOR_ABSX]: this.logicalEor(Mode.ABSX),
-        [Instruction_OptCode_Table.EOR_ABSY]: this.logicalEor(Mode.ABSY)
+        [Instruction_OptCode_Table.EOR_ABSY]: this.logicalEor(Mode.ABSY),
+        [Instruction_OptCode_Table.IOR_IMD]: this.logicalIor(Mode.IMD),
+        [Instruction_OptCode_Table.IOR_ZP]: this.logicalIor(Mode.ZP),
+        [Instruction_OptCode_Table.IOR_ZPX]: this.logicalIor(Mode.ZPX),
+        [Instruction_OptCode_Table.IOR_ABS]: this.logicalIor(Mode.ZPY),
+        [Instruction_OptCode_Table.IOR_ABSX]: this.logicalIor(Mode.ABSX),
+        [Instruction_OptCode_Table.IOR_ABSY]: this.logicalIor(Mode.ABSY),
     };
 
 
@@ -107,6 +113,77 @@ class CPU {
     }
 
 
+    /**
+     * perform exclusive or and consumes cycle
+     * @param mode address mode
+     */
+    private logicalIor (mode: Mode) : (cycles: number) => number {
+        return (cycles: number) => {
+            const value = this.fetch(cycles);
+
+            const data = value.data;
+            let exe_cycles = value.cycles;
+
+            switch (mode) {
+                case Mode.IMD:
+                    this.REG_ACC = this.REG_ACC || data;
+                    exe_cycles - 1;
+                break;
+
+                case Mode.ZP:
+                    const readedZP = this.readByte(data, exe_cycles);
+                    this.REG_ACC = this.REG_ACC || readedZP.data;
+                    exe_cycles = readedZP.cycles;
+                break;
+
+                case Mode.ZPX:
+                    const readedZPX = this.readByte((data + this.REG_X) % 0xFF, exe_cycles);
+                    this.REG_ACC = this.REG_ACC || readedZPX.data;
+                    exe_cycles = readedZPX.cycles;
+                break;
+
+                case Mode.ABS:
+                    const least_sig = this.fetch(exe_cycles);
+                    const abs_address = data << 8 | least_sig.data;
+                    exe_cycles = least_sig.cycles;
+                    const readed_abs = this.readByte(abs_address, exe_cycles);
+                    this.REG_ACC = this.REG_ACC || readed_abs.data;
+                    exe_cycles = readed_abs.cycles;
+                break;
+
+                case Mode.ABSX:
+                    const least_sigx = this.fetch(exe_cycles);
+                    const abs_addressx = (data << 8 | least_sigx.data) + this.REG_X;
+                    exe_cycles = least_sigx.cycles;
+                    const readed_absx = this.readByte(abs_addressx, exe_cycles);
+                    this.REG_ACC = this.REG_ACC || readed_absx.data;
+                    exe_cycles = readed_absx.cycles;
+                break;
+
+                case Mode.ABSY:
+                    const least_sigy = this.fetch(exe_cycles);
+                    const abs_addressy = (data << 8 | least_sigy.data) + this.REG_Y;
+                    exe_cycles = least_sigy.cycles;
+                    const readed_absy = this.readByte(abs_addressy, exe_cycles);
+                    this.REG_ACC = this.REG_ACC || readed_absy.data;
+                    exe_cycles = readed_absy.cycles;
+                break;
+
+
+                default:
+                    break;
+            }
+
+            this.setArithmaticFlag(this.REG_ACC);
+
+            return exe_cycles;
+        }
+    }
+
+    /**
+     * perform exclusive or and consumes cycle
+     * @param mode address mode
+     */
     private logicalEor (mode: Mode) : (cycles: number) => number {
 
         return (cycles: number) => {
@@ -117,7 +194,7 @@ class CPU {
 
             switch (mode) {
                 case Mode.IMD:
-                    this.REG_ACC = this.REG_ACC && data;
+                    this.REG_ACC = this.REG_ACC ^ data;
                     exe_cycles - 1;
                 break;
 

@@ -59,7 +59,13 @@ enum Instruction_OptCode_Table {
     EOR_ZPX = 0x55,
     EOR_ABS = 0x4D,
     EOR_ABSX = 0x5D,
-    EOR_ABSY = 0x59
+    EOR_ABSY = 0x59,
+    IOR_IMD = 0x09,
+    IOR_ZP = 0x05,
+    IOR_ZPX = 0x15,
+    IOR_ABS = 0x0D,
+    IOR_ABSX = 0x1D,
+    IOR_ABSY = 0x19
 }
 
 
