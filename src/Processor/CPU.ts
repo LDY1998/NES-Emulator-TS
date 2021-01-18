@@ -85,6 +85,8 @@ class CPU {
         [Instruction_OptCode_Table.IOR_ABS]: this.logicalIor(Mode.ZPY),
         [Instruction_OptCode_Table.IOR_ABSX]: this.logicalIor(Mode.ABSX),
         [Instruction_OptCode_Table.IOR_ABSY]: this.logicalIor(Mode.ABSY),
+        [Instruction_OptCode_Table.BIT_ZP]: this.bitTest(Mode.ZP),
+        [Instruction_OptCode_Table.BIT_ABS]: this.bitTest(Mode.ABS)
     };
 
 
@@ -112,6 +114,43 @@ class CPU {
         this.status.negative = res >> 7 & 0x01;
     }
 
+
+
+    private bitTest (mode: Mode): (cycles: number) => number {
+        return (cycles: number) => {
+            const value = this.fetch(cycles);
+
+            const data = value.data;
+            let exe_cycles = value.cycles;
+
+            let res = 0;
+
+            switch (mode) {
+                case Mode.ZP:
+                    const readedZP = this.readByte(data, exe_cycles);
+                    res = this.REG_ACC && readedZP.data;
+                    exe_cycles = readedZP.cycles;
+                break;
+
+                case Mode.ABS:
+                    const least_sig = this.fetch(exe_cycles);
+                    const abs_address = data << 8 | least_sig.data;
+                    exe_cycles = least_sig.cycles;
+                    const readed_abs = this.readByte(abs_address, exe_cycles);
+                    res = this.REG_ACC && readed_abs.data;
+                    exe_cycles = readed_abs.cycles;
+                break;
+
+                default:
+                    break;
+            }
+
+            this.status["zero"] = res == 0? 1 : 0;
+            this.status["overflow"] = res >> 7;
+            this.status["negative"] = res >> 8;
+            return exe_cycles;
+        }
+    }
 
     /**
      * perform exclusive or and consumes cycle
