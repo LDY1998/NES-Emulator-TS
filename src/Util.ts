@@ -86,11 +86,27 @@ enum Instruction_OptCode_Table {
     CLC = 0x18,
     CLD = 0xD8,
     CLI = 0x58,
-    CLV = 0xB8
+    CLV = 0xB8,
+    ASL_ACC = 0x0A,
+    ASL_ZP = 0x06,
+    ASL_ZPX = 0x16,
+    ASL_ABS = 0x0E,
+    ASL_ABSX = 0x1E
+}
+
+enum Flag {
+    C = "carry",
+    D = "decimal",
+    Z = "zero",
+    I = "inter_dis",
+    B = "break",
+    O = "overflow",
+    N = "negative"
 }
 
 
 enum Mode {
+    ACC,
     IMD,
     ZP,
     ZPX,
@@ -120,5 +136,6 @@ export {
     recursive_log,
     Register,
     Mode,
-    Instruction_OptCode_Table
+    Instruction_OptCode_Table,
+    Flag
 }

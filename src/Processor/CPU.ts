@@ -1,4 +1,4 @@
-import { Instruction_OptCode_Table, Register, Mode } from "../Util";
+import { Instruction_OptCode_Table, Register, Mode, Flag } from "../Util";
 
 
 
@@ -99,12 +99,17 @@ class CPU {
         [Instruction_OptCode_Table.DEC_ABSX]: this.decMemory(Mode.ABSX),
         [Instruction_OptCode_Table.DEX]: this.decRegister(Register.REG_X),
         [Instruction_OptCode_Table.DEY]: this.decRegister(Register.REG_Y),
-        [Instruction_OptCode_Table.SEC]: this.setFlag("carry"),
-        [Instruction_OptCode_Table.SED]: this.setFlag("decimal"),
-        [Instruction_OptCode_Table.SEI]: this.setFlag("inter_dis"),
-        [Instruction_OptCode_Table.CLC]: this.clearFlag("carry"),
-        [Instruction_OptCode_Table.CLD]: this.clearFlag("decimal"),
-        [Instruction_OptCode_Table.CLI]: this.clearFlag("inter_dis")
+        [Instruction_OptCode_Table.SEC]: this.setFlag(Flag.C),
+        [Instruction_OptCode_Table.SED]: this.setFlag(Flag.D),
+        [Instruction_OptCode_Table.SEI]: this.setFlag(Flag.I),
+        [Instruction_OptCode_Table.CLC]: this.clearFlag(Flag.C),
+        [Instruction_OptCode_Table.CLD]: this.clearFlag(Flag.D),
+        [Instruction_OptCode_Table.CLI]: this.clearFlag(Flag.I),
+        [Instruction_OptCode_Table.ASL_ACC]: this.arithmaticShiftLeft(Mode.ACC),
+        [Instruction_OptCode_Table.ASL_ZP]: this.arithmaticShiftLeft(Mode.ZP),
+        [Instruction_OptCode_Table.ASL_ZPX]: this.arithmaticShiftLeft(Mode.ZPX),
+        [Instruction_OptCode_Table.ASL_ABS]: this.arithmaticShiftLeft(Mode.ABS),
+        [Instruction_OptCode_Table.ASL_ABSX]: this.arithmaticShiftLeft(Mode.ABSX)
     };
 
 
@@ -132,17 +137,92 @@ class CPU {
         this.status.negative = res >> 7 & 0x01;
     }
 
-    private clearFlag(flagname: string): (cycles: number) => number {
+    private clearFlag(flagname: Flag): (cycles: number) => number {
         return (cycles: number) => {
             this.status[flagname] = 1;
             return cycles - 1;
         }
     }
 
-    private setFlag(flagname: string): (cycles: number) => number {
+    private setFlag(flagname: Flag): (cycles: number) => number {
         return (cycles: number) => {
             this.status[flagname] = 1;
             return cycles - 1;
+        }
+    }
+
+
+    private arithmaticShiftLeft(mode: Mode): (cycles: number) => number {
+        return (cycles: number) => {
+
+            let exe_cycles = cycles;
+
+            switch (mode) {
+                case Mode.ACC:
+                    this.status[Flag.C] = this.REG_ACC >> 7;
+                    this.REG_ACC = this.REG_ACC << 1;
+                    exe_cycles = exe_cycles - 1;
+                break;
+                case Mode.ZP: {
+                    const value = this.fetch(cycles);
+                    const data = value.data;
+                    exe_cycles = value.cycles;
+                    const readedZP = this.readByte(data, exe_cycles);
+                    const shiftedZP = readedZP.data << 1;
+                    exe_cycles = this.writeToMemory(data, readedZP.cycles, shiftedZP);
+                    this.status[Flag.C] = readedZP.data >> 7;
+                }
+                    
+                break;
+
+                case Mode.ZPX: {
+                    const value = this.fetch(cycles);
+                    const data = value.data;
+                    exe_cycles = value.cycles;
+                    const zpxAddress = (data + this.REG_X) % 0xFF;
+                    const readedZPX = this.readByte(zpxAddress, exe_cycles);
+                    const shiftedZPX = readedZPX.data << 1;
+                    exe_cycles = this.writeToMemory(readedZPX.data, readedZPX.cycles, shiftedZPX);
+                    this.status[Flag.C] = readedZPX.data >> 7;
+                }
+                    
+                break;
+
+                case Mode.ABS: {
+                    const value = this.fetch(cycles);
+                    const data = value.data;
+                    exe_cycles = value.cycles;
+                    const least_sig = this.fetch(exe_cycles);
+                    const abs_address = data << 8 | least_sig.data;
+                    exe_cycles = least_sig.cycles;
+                    const readed_abs = this.readByte(abs_address, exe_cycles);
+                    const shiftedABS = readed_abs.data << 1;
+                    exe_cycles = this.writeToMemory(abs_address, readed_abs.cycles, shiftedABS);
+                    this.status[Flag.C] = readed_abs.data >> 7;
+                }
+                    
+                break;
+
+                case Mode.ABSX: {
+                    const value = this.fetch(cycles);
+                    const data = value.data;
+                    exe_cycles = value.cycles;
+                    const least_sigx = this.fetch(exe_cycles);
+                    const abs_addressx = (data << 8 | least_sigx.data) + this.REG_X;
+                    exe_cycles = least_sigx.cycles;
+                    const readed_absx = this.readByte(abs_addressx, exe_cycles);
+                    const shiftedABSX = readed_absx.data << 1;
+                    exe_cycles = this.writeToMemory(abs_addressx, readed_absx.cycles, shiftedABSX);
+                    this.status[Flag.C] = readed_absx.data >> 7;
+                }
+                break;
+
+                default:
+                    break;
+            }
+
+
+            return exe_cycles;
         }
     }
     private decRegister(reg: Register): (cycles: number) => number {
@@ -291,9 +371,9 @@ class CPU {
                     break;
             }
 
-            this.status["zero"] = res == 0? 1 : 0;
-            this.status["overflow"] = res >> 7;
-            this.status["negative"] = res >> 8;
+            this.status[Flag.Z] = res == 0? 1 : 0;
+            this.status[Flag.O] = res >> 6;
+            this.status[Flag.N] = res >> 7;
             return exe_cycles;
         }
     }
@@ -519,12 +599,12 @@ class CPU {
     private addAndSetFlag(num1: number, num2: number): number {
         const sign1 = num1 >> 7 & 0x01;
         const sign2 = num2 >> 7 & 0x01;
-        const res = num1 + num2 + this.status["carry"];
+        const res = num1 + num2 + this.status[Flag.C];
         const sign_res = res >> 7 & 0x01;
 
-        this.status["overflow"] = (sign1 && sign2 && !sign_res) || (!sign1 && !sign2 && sign_res)? 1 : 0;
-        this.status["carry"] = res > 0xFF ? 1 : 0;
-        this.status["negative"] = sign_res;
+        this.status[Flag.O] = (sign1 && sign2 && !sign_res) || (!sign1 && !sign2 && sign_res)? 1 : 0;
+        this.status[Flag.C] = res > 0xFF ? 1 : 0;
+        this.status[Flag.N] = sign_res;
 
 
         return (res & 0xFF);
