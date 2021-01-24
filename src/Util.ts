@@ -91,7 +91,11 @@ enum Instruction_OptCode_Table {
     ASL_ZP = 0x06,
     ASL_ZPX = 0x16,
     ASL_ABS = 0x0E,
-    ASL_ABSX = 0x1E
+    ASL_ABSX = 0x1E,
+    NOP = 0xEA,
+    BCC = 0x90,
+    BCS = 0xB0,
+    BEQ = 0xF0
 }
 
 enum Flag {
@@ -118,6 +122,12 @@ enum Mode {
     IDY
 }
 
+enum BranchMode {
+    C,
+    S,
+    E,
+    NE
+}
 
 
 
@@ -137,5 +147,6 @@ export {
     Register,
     Mode,
     Instruction_OptCode_Table,
-    Flag
+    Flag,
+    BranchMode
 }

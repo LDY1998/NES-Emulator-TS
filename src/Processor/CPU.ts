@@ -1,4 +1,4 @@
-import { Instruction_OptCode_Table, Register, Mode, Flag } from "../Util";
+import { Instruction_OptCode_Table, Register, Mode, Flag, BranchMode } from "../Util";
 
 
 
@@ -109,7 +109,11 @@ class CPU {
         [Instruction_OptCode_Table.ASL_ZP]: this.arithmaticShiftLeft(Mode.ZP),
         [Instruction_OptCode_Table.ASL_ZPX]: this.arithmaticShiftLeft(Mode.ZPX),
         [Instruction_OptCode_Table.ASL_ABS]: this.arithmaticShiftLeft(Mode.ABS),
-        [Instruction_OptCode_Table.ASL_ABSX]: this.arithmaticShiftLeft(Mode.ABSX)
+        [Instruction_OptCode_Table.ASL_ABSX]: this.arithmaticShiftLeft(Mode.ABSX),
+        [Instruction_OptCode_Table.NOP]: this.nop(),
+        [Instruction_OptCode_Table.BCC]: this.branch(BranchMode.C),
+        [Instruction_OptCode_Table.BCS]: this.branch(BranchMode.S),
+        [Instruction_OptCode_Table.BEQ]: this.branch(BranchMode.E),
     };
 
 
@@ -151,6 +155,44 @@ class CPU {
         }
     }
 
+  
+    private branch(branchMode: BranchMode): (cycles: number) => number {
+        return (cycles: number) => {
+            const value = this.fetch(cycles);
+
+            const data = value.data;
+            let exe_cycles = value.cycles;
+
+            switch (branchMode) {
+                case BranchMode.C:
+                    if (!this.status[Flag.C]) {
+                        exe_cycles = this.updatePC(exe_cycles, this.getPC()+data);
+                    }
+                    break;
+
+                case BranchMode.S:
+                    if (this.status[Flag.C]) {
+                        exe_cycles = this.updatePC(exe_cycles, this.getPC()+data);
+                    }
+                break;
+
+                case BranchMode.E:
+                    if (this.status[Flag.Z])
+                        exe_cycles = this.updatePC(exe_cycles, this.getPC()+data);
+                break;
+
+                case BranchMode.NE:
+                    if (!this.status[Flag.Z])
+                        exe_cycles = this.updatePC(exe_cycles, this.getPC()+data);
+                break;
+                default:
+                    break;
+            }
+
+            return exe_cycles;
+        }
+    }
+
 
     private arithmaticShiftLeft(mode: Mode): (cycles: number) => number {
         return (cycles: number) => {
@@ -161,6 +203,7 @@ class CPU {
                 case Mode.ACC:
                     this.status[Flag.C] = this.REG_ACC >> 7;
                     this.REG_ACC = this.REG_ACC << 1;
+                    this.setArithmaticFlag(this.REG_ACC);
                     exe_cycles = exe_cycles - 1;
                 break;
                 case Mode.ZP: {
@@ -171,6 +214,8 @@ class CPU {
                     const shiftedZP = readedZP.data << 1;
                     exe_cycles = this.writeToMemory(data, readedZP.cycles, shiftedZP);
                     this.status[Flag.C] = readedZP.data >> 7;
+                    this.setArithmaticFlag(shiftedZP);
+
                 }
                     
                 break;
@@ -184,6 +229,7 @@ class CPU {
                     const shiftedZPX = readedZPX.data << 1;
                     exe_cycles = this.writeToMemory(readedZPX.data, readedZPX.cycles, shiftedZPX);
                     this.status[Flag.C] = readedZPX.data >> 7;
+                    this.setArithmaticFlag(shiftedZPX);
                 }
                     
                 break;
@@ -199,6 +245,7 @@ class CPU {
                     const shiftedABS = readed_abs.data << 1;
                     exe_cycles = this.writeToMemory(abs_address, readed_abs.cycles, shiftedABS);
                     this.status[Flag.C] = readed_abs.data >> 7;
+                    this.setArithmaticFlag(shiftedABS);
                 }
                     
                 break;
@@ -214,6 +261,7 @@ class CPU {
                     const shiftedABSX = readed_absx.data << 1;
                     exe_cycles = this.writeToMemory(abs_addressx, readed_absx.cycles, shiftedABSX);
                     this.status[Flag.C] = readed_absx.data >> 7;
+                    this.setArithmaticFlag(shiftedABSX);
                 }
                 break;
 
@@ -376,6 +424,11 @@ class CPU {
             this.status[Flag.N] = res >> 7;
             return exe_cycles;
         }
+    }
+
+    private nop (): (cycles: number) => number {
+        return (cycles: number) => cycles - 1;
+
     }
 
     /**
@@ -831,6 +884,11 @@ class CPU {
 
     public getStatus(flag: string): number {
         return this.status[flag];
+    }
+
+    private updatePC(cycles: number, value: number): number {
+        this.REG_PC = value;
+        return cycles - 1;
     }
 
     private fetch(cycles: number) {
