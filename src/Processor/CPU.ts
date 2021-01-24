@@ -92,7 +92,16 @@ class CPU {
         [Instruction_OptCode_Table.INC_ABS]: this.incMemory(Mode.ABS),
         [Instruction_OptCode_Table.INC_ABSX]: this.incMemory(Mode.ABSX),
         [Instruction_OptCode_Table.INX]: this.incRegister(Register.REG_X),
-        [Instruction_OptCode_Table.INY]: this.incRegister(Register.REG_Y)
+        [Instruction_OptCode_Table.INY]: this.incRegister(Register.REG_Y),
+        [Instruction_OptCode_Table.DEC_ZP]: this.decMemory(Mode.ZP),
+        [Instruction_OptCode_Table.DEC_ZPX]: this.decMemory(Mode.ZPX),
+        [Instruction_OptCode_Table.DEC_ABS]: this.decMemory(Mode.ABS),
+        [Instruction_OptCode_Table.DEC_ABSX]: this.decMemory(Mode.ABSX),
+        [Instruction_OptCode_Table.DEX]: this.decRegister(Register.REG_X),
+        [Instruction_OptCode_Table.DEY]: this.decRegister(Register.REG_Y),
+        [Instruction_OptCode_Table.SEC]: this.setFlag("carry"),
+        [Instruction_OptCode_Table.SED]: this.setFlag("decimal"),
+        [Instruction_OptCode_Table.SEI]: this.setFlag("inter_dis")
     };
 
 
@@ -120,12 +129,76 @@ class CPU {
         this.status.negative = res >> 7 & 0x01;
     }
 
+    private setFlag(flagname: string): (cycles: number) => number {
+        return (cycles: number) => {
+            this.status[flagname] = 1;
+            return cycles - 1;
+        }
+    }
+    private decRegister(reg: Register): (cycles: number) => number {
+        return (cycles: number) => {
+            this[reg]--;
+            this.setArithmaticFlag(this[reg]);
+            return cycles - 1;
+        }
+    }
+
 
     private incRegister(reg: Register): (cycles: number) => number {
         return (cycles: number) => {
             this[reg]++;
             this.setArithmaticFlag(this[reg]);
             return cycles - 1;
+        }
+    }
+
+    private decMemory(mode: Mode): (cycles: number) => number {
+        return (cycles: number) => {
+            const value = this.fetch(cycles);
+
+            const data = value.data;
+            let exe_cycles = value.cycles;
+
+            switch (mode) {
+                case Mode.ZP:
+                    const readedZP = this.readByte(data, exe_cycles);
+                    exe_cycles = this.writeToMemory(data, readedZP.cycles, readedZP.data-1);
+                    this.setArithmaticFlag(readedZP.data-1);
+                break;
+
+                case Mode.ZPX:
+                    const zpxAddress = (data + this.REG_X) % 0xFF;
+                    const readedZPX = this.readByte(zpxAddress, exe_cycles);
+                    exe_cycles = this.writeToMemory(readedZPX.data, readedZPX.cycles, readedZPX.data-1);
+                    this.setArithmaticFlag(readedZPX.data-1);
+                break;
+
+                case Mode.ABS:
+                    const least_sig = this.fetch(exe_cycles);
+                    const abs_address = data << 8 | least_sig.data;
+                    exe_cycles = least_sig.cycles;
+                    const readed_abs = this.readByte(abs_address, exe_cycles);
+                    exe_cycles = this.writeToMemory(abs_address, readed_abs.cycles, readed_abs.data-1);
+                    this.setArithmaticFlag(readed_abs.data-1);
+                break;
+
+                case Mode.ABSX:
+                    const least_sigx = this.fetch(exe_cycles);
+                    const abs_addressx = (data << 8 | least_sigx.data) + this.REG_X;
+                    exe_cycles = least_sigx.cycles;
+                    const readed_absx = this.readByte(abs_addressx, exe_cycles);
+                    this.REG_ACC = this.REG_ACC || readed_absx.data;
+                    exe_cycles = this.writeToMemory(abs_addressx, readed_absx.cycles, readed_absx.data-1);
+                    this.setArithmaticFlag(readed_absx.data-1);
+
+                break;
+
+                default:
+                    break;
+            }
+
+
+            return exe_cycles;
         }
     }
 

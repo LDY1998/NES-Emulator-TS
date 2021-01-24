@@ -74,6 +74,15 @@ enum Instruction_OptCode_Table {
     INC_ABSX = 0xFE,
     INX = 0xE8,
     INY = 0xC8,
+    DEC_ZP = 0xC6,
+    DEC_ZPX = 0xD6,
+    DEC_ABS = 0xCE,
+    DEC_ABSX = 0xDE,
+    DEX = 0xCA,
+    DEY = 0x88,
+    SEC = 0x38,
+    SED = 0xF8,
+    SEI = 0x78
 }
 
 
