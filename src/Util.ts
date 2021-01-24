@@ -67,7 +67,11 @@ enum Instruction_OptCode_Table {
     IOR_ABSX = 0x1D,
     IOR_ABSY = 0x19,
     BIT_ZP = 0x24,
-    BIT_ABS = 0x2C
+    BIT_ABS = 0x2C,
+    INC_ZP = 0xE6,
+    INC_ZPX = 0xF6,
+    INC_ABS = 0xEE,
+    INC_ABSX = 0xFE
 }
 
 

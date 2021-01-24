@@ -86,7 +86,11 @@ class CPU {
         [Instruction_OptCode_Table.IOR_ABSX]: this.logicalIor(Mode.ABSX),
         [Instruction_OptCode_Table.IOR_ABSY]: this.logicalIor(Mode.ABSY),
         [Instruction_OptCode_Table.BIT_ZP]: this.bitTest(Mode.ZP),
-        [Instruction_OptCode_Table.BIT_ABS]: this.bitTest(Mode.ABS)
+        [Instruction_OptCode_Table.BIT_ABS]: this.bitTest(Mode.ABS),
+        [Instruction_OptCode_Table.INC_ZP]: this.incMemory(Mode.ZP),
+        [Instruction_OptCode_Table.INC_ZPX]: this.incMemory(Mode.ZPX),
+        [Instruction_OptCode_Table.INC_ABS]: this.incMemory(Mode.ABS),
+        [Instruction_OptCode_Table.INC_ABSX]: this.incMemory(Mode.ABSX)
     };
 
 
@@ -115,6 +119,56 @@ class CPU {
     }
 
 
+
+    private incMemory(mode: Mode): (cycles: number) => number {
+        return (cycles: number) => {
+            const value = this.fetch(cycles);
+
+            const data = value.data;
+            let exe_cycles = value.cycles;
+
+            switch (mode) {
+                case Mode.ZP:
+                    const readedZP = this.readByte(data, exe_cycles);
+                    exe_cycles = this.writeToMemory(data, readedZP.cycles, readedZP.data+1);
+                    this.setArithmaticFlag(readedZP.data+1);
+                break;
+
+                case Mode.ZPX:
+                    const zpxAddress = (data + this.REG_X) % 0xFF;
+                    const readedZPX = this.readByte(zpxAddress, exe_cycles);
+                    exe_cycles = this.writeToMemory(readedZPX.data, readedZPX.cycles, readedZPX.data+1);
+                    this.setArithmaticFlag(readedZPX.data+1);
+                break;
+
+                case Mode.ABS:
+                    const least_sig = this.fetch(exe_cycles);
+                    const abs_address = data << 8 | least_sig.data;
+                    exe_cycles = least_sig.cycles;
+                    const readed_abs = this.readByte(abs_address, exe_cycles);
+                    exe_cycles = this.writeToMemory(abs_address, readed_abs.cycles, readed_abs.data+1);
+                    this.setArithmaticFlag(readed_abs.data+1);
+                break;
+
+                case Mode.ABSX:
+                    const least_sigx = this.fetch(exe_cycles);
+                    const abs_addressx = (data << 8 | least_sigx.data) + this.REG_X;
+                    exe_cycles = least_sigx.cycles;
+                    const readed_absx = this.readByte(abs_addressx, exe_cycles);
+                    this.REG_ACC = this.REG_ACC || readed_absx.data;
+                    exe_cycles = this.writeToMemory(abs_addressx, readed_absx.cycles, readed_absx.data+1);
+                    this.setArithmaticFlag(readed_absx.data+1);
+
+                break;
+
+                default:
+                    break;
+            }
+
+
+            return exe_cycles;
+        }
+    }
 
     private bitTest (mode: Mode): (cycles: number) => number {
         return (cycles: number) => {
@@ -625,9 +679,24 @@ class CPU {
         }
     }
 
+    /**
+     * 
+     * @param address address to store
+     * @param cycles current remaining cycle
+     * @param register register which stores the value to write to memory
+     */
     private storeByte(address: number, cycles: number, register: Register) {
-        this.memory[address] = this[register];
-        // this.REG_PC++;
+        return this.writeToMemory(address, cycles, this[register])
+    }
+
+    /**
+     * 
+     * @param address address to store to
+     * @param cycles cycles remaining
+     * @param value value to write into memory
+     */
+    private writeToMemory(address: number, cycles: number, value: number) {
+        this.memory[address] = value;
         return cycles - 1;
     }
 
