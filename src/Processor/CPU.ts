@@ -101,7 +101,10 @@ class CPU {
         [Instruction_OptCode_Table.DEY]: this.decRegister(Register.REG_Y),
         [Instruction_OptCode_Table.SEC]: this.setFlag("carry"),
         [Instruction_OptCode_Table.SED]: this.setFlag("decimal"),
-        [Instruction_OptCode_Table.SEI]: this.setFlag("inter_dis")
+        [Instruction_OptCode_Table.SEI]: this.setFlag("inter_dis"),
+        [Instruction_OptCode_Table.CLC]: this.clearFlag("carry"),
+        [Instruction_OptCode_Table.CLD]: this.clearFlag("decimal"),
+        [Instruction_OptCode_Table.CLI]: this.clearFlag("inter_dis")
     };
 
 
@@ -127,6 +130,13 @@ class CPU {
     private setArithmaticFlag (res: number): void {
         this.status.zero = res === 0 ? 1 : 0;
         this.status.negative = res >> 7 & 0x01;
+    }
+
+    private clearFlag(flagname: string): (cycles: number) => number {
+        return (cycles: number) => {
+            this.status[flagname] = 1;
+            return cycles - 1;
+        }
     }
 
     private setFlag(flagname: string): (cycles: number) => number {

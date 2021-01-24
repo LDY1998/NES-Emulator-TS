@@ -82,7 +82,11 @@ enum Instruction_OptCode_Table {
     DEY = 0x88,
     SEC = 0x38,
     SED = 0xF8,
-    SEI = 0x78
+    SEI = 0x78,
+    CLC = 0x18,
+    CLD = 0xD8,
+    CLI = 0x58,
+    CLV = 0xB8
 }
 
 
