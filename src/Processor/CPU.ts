@@ -111,9 +111,12 @@ class CPU {
         [Instruction_OptCode_Table.ASL_ABS]: this.arithmaticShiftLeft(Mode.ABS),
         [Instruction_OptCode_Table.ASL_ABSX]: this.arithmaticShiftLeft(Mode.ABSX),
         [Instruction_OptCode_Table.NOP]: this.nop(),
-        [Instruction_OptCode_Table.BCC]: this.branch(BranchMode.C),
-        [Instruction_OptCode_Table.BCS]: this.branch(BranchMode.S),
-        [Instruction_OptCode_Table.BEQ]: this.branch(BranchMode.E),
+        [Instruction_OptCode_Table.BCC]: this.branch(BranchMode.CC),
+        [Instruction_OptCode_Table.BCS]: this.branch(BranchMode.CS),
+        [Instruction_OptCode_Table.BEQ]: this.branch(BranchMode.EQ),
+        [Instruction_OptCode_Table.BNE]: this.branch(BranchMode.NE),
+        [Instruction_OptCode_Table.BPL]: this.branch(BranchMode.PL),
+        [Instruction_OptCode_Table.BVC]: this.branch(BranchMode.VC)
     };
 
 
@@ -164,25 +167,40 @@ class CPU {
             let exe_cycles = value.cycles;
 
             switch (branchMode) {
-                case BranchMode.C:
+                case BranchMode.CC:
                     if (!this.status[Flag.C]) {
                         exe_cycles = this.updatePC(exe_cycles, this.getPC()+data);
                     }
                     break;
 
-                case BranchMode.S:
+                case BranchMode.CS:
                     if (this.status[Flag.C]) {
                         exe_cycles = this.updatePC(exe_cycles, this.getPC()+data);
                     }
                 break;
 
-                case BranchMode.E:
+                case BranchMode.EQ:
                     if (this.status[Flag.Z])
                         exe_cycles = this.updatePC(exe_cycles, this.getPC()+data);
                 break;
 
                 case BranchMode.NE:
                     if (!this.status[Flag.Z])
+                        exe_cycles = this.updatePC(exe_cycles, this.getPC()+data);
+                break;
+
+                case BranchMode.PL:
+                    if (!this.status[Flag.N])
+                        exe_cycles = this.updatePC(exe_cycles, this.getPC()+data);
+                break;
+
+                case BranchMode.VC:
+                    if (!this.status[Flag.O])
+                        exe_cycles = this.updatePC(exe_cycles, this.getPC()+data);
+                break;
+
+                case BranchMode.VS:
+                    if (this.status[Flag.O])
                         exe_cycles = this.updatePC(exe_cycles, this.getPC()+data);
                 break;
                 default:

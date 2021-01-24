@@ -95,7 +95,11 @@ enum Instruction_OptCode_Table {
     NOP = 0xEA,
     BCC = 0x90,
     BCS = 0xB0,
-    BEQ = 0xF0
+    BEQ = 0xF0,
+    BNE = 0xD0,
+    BPL = 0x10,
+    BVC = 0x50,
+    BVS = 0x70
 }
 
 enum Flag {
@@ -123,10 +127,14 @@ enum Mode {
 }
 
 enum BranchMode {
-    C,
-    S,
-    E,
-    NE
+    CC,
+    CS,
+    EQ,
+    NE,
+    MI,
+    PL,
+    VC,
+    VS
 }
 
 
