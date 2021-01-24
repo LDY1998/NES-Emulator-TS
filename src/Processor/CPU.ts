@@ -90,7 +90,9 @@ class CPU {
         [Instruction_OptCode_Table.INC_ZP]: this.incMemory(Mode.ZP),
         [Instruction_OptCode_Table.INC_ZPX]: this.incMemory(Mode.ZPX),
         [Instruction_OptCode_Table.INC_ABS]: this.incMemory(Mode.ABS),
-        [Instruction_OptCode_Table.INC_ABSX]: this.incMemory(Mode.ABSX)
+        [Instruction_OptCode_Table.INC_ABSX]: this.incMemory(Mode.ABSX),
+        [Instruction_OptCode_Table.INX]: this.incRegister(Register.REG_X),
+        [Instruction_OptCode_Table.INY]: this.incRegister(Register.REG_Y)
     };
 
 
@@ -119,6 +121,13 @@ class CPU {
     }
 
 
+    private incRegister(reg: Register): (cycles: number) => number {
+        return (cycles: number) => {
+            this[reg]++;
+            this.setArithmaticFlag(this[reg]);
+            return cycles - 1;
+        }
+    }
 
     private incMemory(mode: Mode): (cycles: number) => number {
         return (cycles: number) => {
