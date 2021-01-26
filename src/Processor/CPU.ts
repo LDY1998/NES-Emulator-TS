@@ -664,6 +664,18 @@ class CPU {
         }
     }
 
+    private subtractAndSetFlag(num1: number, num2: number): number {
+        const sign1 = num1 >> 7 & 0x01;
+        const sign2 = num2 >> 7 & 0x01;
+        const res = num1 - num2 - (1 - this.status[Flag.C]);
+        const sign_res = res >> 7 & 0x01;
+
+        this.status[Flag.O] = (sign1 && !sign2 && !sign_res) || (!sign1 && sign2 && sign_res)? 1 : 0;
+        this.status[Flag.C] = res <= 0xFF || this.status[Flag.O] ? 0 : 1;
+        this.status[Flag.N] = sign_res;
+
+        return (res & 0xFF);    
+    }
 
     private addAndSetFlag(num1: number, num2: number): number {
         const sign1 = num1 >> 7 & 0x01;
@@ -679,6 +691,67 @@ class CPU {
         return (res & 0xFF);
     }
 
+    private subtract(mode: Mode): () => number {
+        return () => {
+
+            const data = this.fetch();
+
+            let exe_cycles = 0;
+    
+            switch (mode) {
+                case Mode.IMD:
+                    this.REG_ACC = this.subtractAndSetFlag(data, this.REG_ACC);
+                    exe_cycles = 2;
+                break;
+
+                case Mode.ZP:
+                    const readed = this.readByte(data);
+                    this.REG_ACC = this.subtractAndSetFlag(readed, this.REG_ACC);
+                    // Cycle for reading the memory
+                    exe_cycles = 3;
+                break;
+
+                case Mode.ZPX:
+                    const readedx = this.readByte((data + this.REG_X) && 0xFF);
+                    this.REG_ACC = this.subtractAndSetFlag(readedx, this.REG_ACC);
+                    exe_cycles = 4;
+                break;
+
+                case Mode.ZPY:
+                    const readedy = this.readByte((data + this.REG_Y) && 0xFF);
+                    this.REG_ACC = this.subtractAndSetFlag(readedy, this.REG_ACC);
+                    exe_cycles = 4;
+                break;
+
+                case Mode.ABS:
+                    const least_sig = this.fetch();
+                    const abs_address = data << 8 | least_sig;
+                    const readed_abs = this.readByte(abs_address);
+                    this.REG_ACC = this.subtractAndSetFlag(readed_abs, this.REG_ACC);
+                    exe_cycles = abs_address > 0xFF? 5 : 4;
+                break;
+                case Mode.ABSX:
+                    const least_sigx = this.fetch();
+                    const abs_addressx = data << 8 | least_sigx;
+                    const readed_absx = this.readByte((abs_addressx + this.REG_X) && 0xFFFF);
+                    this.REG_ACC = this.subtractAndSetFlag(readed_absx, this.REG_ACC);
+                    exe_cycles = abs_addressx > 0xFF? 5 : 4;
+                break;
+
+                case Mode.ABSY:
+                    const least_sigy = this.fetch();
+                    const abs_addressy = data << 8 | least_sigy;
+                    const readed_absy = this.readByte((abs_addressy + this.REG_X) && 0xFFFF);
+                    this.REG_ACC = this.subtractAndSetFlag(readed_absy, this.REG_ACC);
+                    exe_cycles = abs_addressy > 0xFF? 5 : 4;
+                break;
+                default:
+                break;
+            }
+            
+            return exe_cycles;
+        };
+    }
     private add(mode: Mode): () => number {
         return () => {
 
@@ -798,7 +871,7 @@ class CPU {
             return exe_cycles;
         };
     }
-    private load(reg: Register, mode: Mode): (cycles:number) => number {
+    private load(reg: Register, mode: Mode): () => number {
         
         return () => {
             const register = reg;
