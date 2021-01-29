@@ -110,6 +110,21 @@ class CPU {
         [Instruction_OptCode_Table.ASL_ZPX]: this.arithmaticShiftLeft(Mode.ZPX),
         [Instruction_OptCode_Table.ASL_ABS]: this.arithmaticShiftLeft(Mode.ABS),
         [Instruction_OptCode_Table.ASL_ABSX]: this.arithmaticShiftLeft(Mode.ABSX),
+        [Instruction_OptCode_Table.ROL_ACC]: this.arithmaticShiftLeft(Mode.ACC),
+        [Instruction_OptCode_Table.ROL_ZP]: this.arithmaticShiftLeft(Mode.ZP),
+        [Instruction_OptCode_Table.ROL_ZPX]: this.arithmaticShiftLeft(Mode.ZPX),
+        [Instruction_OptCode_Table.ROL_ABS]: this.arithmaticShiftLeft(Mode.ABS),
+        [Instruction_OptCode_Table.ROL_ABSX]: this.arithmaticShiftLeft(Mode.ABSX),
+        [Instruction_OptCode_Table.LSR_ACC]: this.arithmaticShiftRight(Mode.ACC),
+        [Instruction_OptCode_Table.LSR_ZP]: this.arithmaticShiftRight(Mode.ZP),
+        [Instruction_OptCode_Table.LSR_ZPX]: this.arithmaticShiftRight(Mode.ZPX),
+        [Instruction_OptCode_Table.LSR_ABS]: this.arithmaticShiftRight(Mode.ABS),
+        [Instruction_OptCode_Table.LSR_ABSX]: this.arithmaticShiftRight(Mode.ABSX),
+        [Instruction_OptCode_Table.ROR_ACC]: this.arithmaticShiftRight(Mode.ACC),
+        [Instruction_OptCode_Table.ROR_ZP]: this.arithmaticShiftRight(Mode.ZP),
+        [Instruction_OptCode_Table.ROR_ZPX]: this.arithmaticShiftRight(Mode.ZPX),
+        [Instruction_OptCode_Table.ROR_ABS]: this.arithmaticShiftRight(Mode.ABS),
+        [Instruction_OptCode_Table.ROR_ABSX]: this.arithmaticShiftRight(Mode.ABSX),
         [Instruction_OptCode_Table.NOP]: this.nop(),
         [Instruction_OptCode_Table.BCC]: this.branch(BranchMode.CC),
         [Instruction_OptCode_Table.BCS]: this.branch(BranchMode.CS),
@@ -225,6 +240,79 @@ class CPU {
                 default:
                     break;
             }
+
+            return exe_cycles;
+        }
+    }
+
+    private arithmaticShiftRight(mode: Mode): () => number {
+        return () => {
+
+            let exe_cycles = 2;
+
+            switch (mode) {
+                case Mode.ACC:
+                    this.status[Flag.C] = this.REG_ACC & 0x01;
+                    this.REG_ACC = this.REG_ACC >> 1;
+                    this.setArithmaticFlag(this.REG_ACC);
+                    exe_cycles = 2;
+                break;
+                case Mode.ZP: {
+                    const data = this.fetch();
+                    const readedZP = this.readByte(data);
+                    const shiftedZP = readedZP >> 1;
+                    this.writeToMemory(data, shiftedZP);
+                    this.status[Flag.C] = readedZP & 0x01;
+                    this.setArithmaticFlag(shiftedZP);
+                    exe_cycles = 5;
+                }
+                    
+                break;
+
+                case Mode.ZPX: {
+                    const data = this.fetch();
+                    const zpxAddress = (data + this.REG_X) % 0xFF;
+                    const readedZPX = this.readByte(zpxAddress);
+                    const shiftedZPX = readedZPX >> 1;
+                    this.writeToMemory(zpxAddress, shiftedZPX);
+                    this.status[Flag.C] = readedZPX & 0x01;
+                    this.setArithmaticFlag(shiftedZPX);
+                    exe_cycles = 6;
+                }
+                    
+                break;
+
+                case Mode.ABS: {
+                    const data = this.fetch();
+                    const least_sig = this.fetch();
+                    const abs_address = data << 8 | least_sig;
+                    const readed_abs = this.readByte(abs_address);
+                    const shiftedABS = readed_abs >> 1;
+                    this.writeToMemory(abs_address, shiftedABS);
+                    this.status[Flag.C] = readed_abs & 0x01;
+                    this.setArithmaticFlag(shiftedABS);
+                    exe_cycles = 6;
+                }
+                    
+                break;
+
+                case Mode.ABSX: {
+                    const data = this.fetch();
+                    const least_sigx = this.fetch();
+                    const abs_addressx = (data << 8 | least_sigx) + this.REG_X;
+                    const readed_absx = this.readByte(abs_addressx);
+                    const shiftedABSX = readed_absx >> 1;
+                    this.writeToMemory(abs_addressx, shiftedABSX);
+                    this.status[Flag.C] = readed_absx & 0x01;
+                    this.setArithmaticFlag(shiftedABSX);
+                    exe_cycles = 7;
+                }
+                break;
+
+                default:
+                    break;
+            }
+
 
             return exe_cycles;
         }
