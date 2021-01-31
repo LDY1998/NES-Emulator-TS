@@ -176,7 +176,7 @@ class CPU {
   
     private branch(branchMode: BranchMode): () => number {
         return () => {
-            const data = this.fetch();
+            const data = this.fetch().data;
 
             let exe_cycles = 2;
 
@@ -250,6 +250,8 @@ class CPU {
 
             let exe_cycles = 2;
 
+            const data = this.fetch().data;
+
             switch (mode) {
                 case Mode.ACC:
                     this.status[Flag.C] = this.REG_ACC & 0x01;
@@ -258,7 +260,7 @@ class CPU {
                     exe_cycles = 2;
                 break;
                 case Mode.ZP: {
-                    const data = this.fetch();
+                    
                     const readedZP = this.readByte(data);
                     const shiftedZP = readedZP >> 1;
                     this.writeToMemory(data, shiftedZP);
@@ -270,7 +272,6 @@ class CPU {
                 break;
 
                 case Mode.ZPX: {
-                    const data = this.fetch();
                     const zpxAddress = (data + this.REG_X) % 0xFF;
                     const readedZPX = this.readByte(zpxAddress);
                     const shiftedZPX = readedZPX >> 1;
@@ -283,9 +284,8 @@ class CPU {
                 break;
 
                 case Mode.ABS: {
-                    const data = this.fetch();
-                    const least_sig = this.fetch();
-                    const abs_address = data << 8 | least_sig;
+                    const most_sig = this.fetch().data;
+                    const abs_address = most_sig << 8 | data;
                     const readed_abs = this.readByte(abs_address);
                     const shiftedABS = readed_abs >> 1;
                     this.writeToMemory(abs_address, shiftedABS);
@@ -297,9 +297,8 @@ class CPU {
                 break;
 
                 case Mode.ABSX: {
-                    const data = this.fetch();
-                    const least_sigx = this.fetch();
-                    const abs_addressx = (data << 8 | least_sigx) + this.REG_X;
+                    const most_sig = this.fetch().data;
+                    const abs_addressx = (most_sig << 8 | data) + this.REG_X;
                     const readed_absx = this.readByte(abs_addressx);
                     const shiftedABSX = readed_absx >> 1;
                     this.writeToMemory(abs_addressx, shiftedABSX);
@@ -321,6 +320,10 @@ class CPU {
 
     private arithmaticShiftLeft(mode: Mode): () => number {
         return () => {
+            // const fetched = this.fetch(mode);
+            // const data = fetched.data;
+
+            const data = this.fetch().data;
 
             let exe_cycles = 2;
 
@@ -332,7 +335,6 @@ class CPU {
                     exe_cycles = 2;
                 break;
                 case Mode.ZP: {
-                    const data = this.fetch();
                     const readedZP = this.readByte(data);
                     const shiftedZP = readedZP << 1;
                     this.writeToMemory(data, shiftedZP);
@@ -344,11 +346,9 @@ class CPU {
                 break;
 
                 case Mode.ZPX: {
-                    const data = this.fetch();
-                    const zpxAddress = (data + this.REG_X) % 0xFF;
-                    const readedZPX = this.readByte(zpxAddress);
+                    const readedZPX = this.readByte(data);
                     const shiftedZPX = readedZPX << 1;
-                    this.writeToMemory(zpxAddress, shiftedZPX);
+                    this.writeToMemory(data, shiftedZPX);
                     this.status[Flag.C] = readedZPX >> 7;
                     this.setArithmaticFlag(shiftedZPX);
                     exe_cycles = 6;
@@ -357,12 +357,11 @@ class CPU {
                 break;
 
                 case Mode.ABS: {
-                    const data = this.fetch();
-                    const least_sig = this.fetch();
-                    const abs_address = data << 8 | least_sig;
-                    const readed_abs = this.readByte(abs_address);
+                    // const most_sig = this.fetch().data;
+                    // const abs_address = most_sig << 8 | data;
+                    const readed_abs = this.readByte(data);
                     const shiftedABS = readed_abs << 1;
-                    this.writeToMemory(abs_address, shiftedABS);
+                    this.writeToMemory(data, shiftedABS);
                     this.status[Flag.C] = readed_abs >> 7;
                     this.setArithmaticFlag(shiftedABS);
                     exe_cycles = 6;
@@ -371,12 +370,11 @@ class CPU {
                 break;
 
                 case Mode.ABSX: {
-                    const data = this.fetch();
-                    const least_sigx = this.fetch();
-                    const abs_addressx = (data << 8 | least_sigx) + this.REG_X;
-                    const readed_absx = this.readByte(abs_addressx);
+                    // const most_sig = this.fetch().data;
+                    // const abs_addressx = most_sig << 8 | data; + this.REG_X;
+                    const readed_absx = this.readByte(data);
                     const shiftedABSX = readed_absx << 1;
-                    this.writeToMemory(abs_addressx, shiftedABSX);
+                    this.writeToMemory(data, shiftedABSX);
                     this.status[Flag.C] = readed_absx >> 7;
                     this.setArithmaticFlag(shiftedABSX);
                     exe_cycles = 7;
@@ -410,41 +408,24 @@ class CPU {
 
     private decMemory(mode: Mode): () => number {
         return () => {
-            const data = this.fetch();
+            const fetched = this.fetch(mode);
+            const data = fetched.data;
+
+            this.writeToMemory(data, this.readByte(data) - 1);
+            this.setArithmaticFlag(this.readByte(data));
 
             let exe_cycles = 5;
             switch (mode) {
                 case Mode.ZP:
-                    const readedZP = this.readByte(data);
-                    this.writeToMemory(data, readedZP-1);
-                    this.setArithmaticFlag(readedZP-1);
                     exe_cycles = 5;
                 break;
 
                 case Mode.ZPX:
-                    const zpxAddress = (data + this.REG_X) % 0xFF;
-                    const readedZPX = this.readByte(zpxAddress);
-                    this.writeToMemory(zpxAddress, readedZPX-1);
-                    this.setArithmaticFlag(readedZPX-1);
-                    exe_cycles = 6;
-                break;
-
                 case Mode.ABS:
-                    const least_sig = this.fetch();
-                    const abs_address = data << 8 | least_sig;
-                    const readed_abs = this.readByte(abs_address);
-                    this.writeToMemory(abs_address, readed_abs-1);
-                    this.setArithmaticFlag(readed_abs-1);
                     exe_cycles = 6;
                 break;
 
                 case Mode.ABSX:
-                    const least_sigx = this.fetch();
-                    const abs_addressx = (data << 8 | least_sigx) + this.REG_X;
-                    const readed_absx = this.readByte(abs_addressx);
-                    this.REG_ACC = this.REG_ACC || readed_absx;
-                    this.writeToMemory(abs_addressx, readed_absx-1);
-                    this.setArithmaticFlag(readed_absx-1);
                     exe_cycles = 7;
 
                 break;
@@ -460,43 +441,25 @@ class CPU {
 
     private incMemory(mode: Mode): () => number {
         return () => {
-            const data = this.fetch();
+            const fetched = this.fetch(mode);
+            const data = fetched.data;
+
+            this.writeToMemory(data, this.readByte(data) + 1);
+            this.setArithmaticFlag(this.readByte(data));
             let exe_cycles = 0;
 
             switch (mode) {
                 case Mode.ZP:
-                    const readedZP = this.readByte(data);
-                    this.writeToMemory(data, readedZP+1);
-                    this.setArithmaticFlag(readedZP+1);
                     exe_cycles = 5;
 
                 break;
 
                 case Mode.ZPX:
-                    const zpxAddress = (data + this.REG_X) % 0xFF;
-                    const readedZPX = this.readByte(zpxAddress);
-                    this.writeToMemory(zpxAddress, readedZPX+1);
-                    this.setArithmaticFlag(readedZPX+1);
-                    exe_cycles = 6;
-                break;
-
                 case Mode.ABS:
-                    const least_sig = this.fetch();
-                    const abs_address = data << 8 | least_sig;
-                    exe_cycles = least_sig;
-                    const readed_abs = this.readByte(abs_address);
-                    this.writeToMemory(abs_address, readed_abs+1);
-                    this.setArithmaticFlag(readed_abs+1);
                     exe_cycles = 6;
                 break;
 
                 case Mode.ABSX:
-                    const least_sigx = this.fetch();
-                    const abs_addressx = (data << 8 | least_sigx) + this.REG_X;
-                    const readed_absx = this.readByte(abs_addressx);
-                    this.REG_ACC = this.REG_ACC || readed_absx;
-                    this.writeToMemory(abs_addressx, readed_absx+1);
-                    this.setArithmaticFlag(readed_absx+1);
                     exe_cycles = 7;
                 break;
 
@@ -511,24 +474,19 @@ class CPU {
 
     private bitTest (mode: Mode): () => number {
         return () => {
-            const data = this.fetch();
+            const fetched = this.fetch(mode);
+            const data = fetched.data;
             let exe_cycles = 0;
 
-            let res = 0;
+            let res = this.memory[data] && this.REG_ACC;
+            
 
             switch (mode) {
                 case Mode.ZP:
-                    const readedZP = this.readByte(data);
-                    res = this.REG_ACC && readedZP;
                     exe_cycles = 3;
                 break;
 
                 case Mode.ABS:
-                    const least_sig = this.fetch();
-                    const abs_address = data << 8 | least_sig;
-                    exe_cycles = least_sig;
-                    const readed_abs = this.readByte(abs_address);
-                    res = this.REG_ACC && readed_abs;
                     exe_cycles = 4;
                 break;
 
@@ -554,7 +512,11 @@ class CPU {
      */
     private logicalIor (mode: Mode) : () => number {
         return () => {
-            const data = this.fetch();
+            const fetched = this.fetch(mode);
+            const data = fetched.data;
+            const page_crossed = fetched.page_crossed;
+
+
             let exe_cycles = 0;
 
             switch (mode) {
@@ -564,41 +526,20 @@ class CPU {
                 break;
 
                 case Mode.ZP:
-                    const readedZP = this.readByte(data);
-                    this.REG_ACC = this.REG_ACC || readedZP;
                     exe_cycles = 3;
                 break;
 
                 case Mode.ZPX:
-                    const readedZPX = this.readByte((data + this.REG_X) % 0xFF);
-                    this.REG_ACC = this.REG_ACC || readedZPX;
-                    exe_cycles = 4;
-                break;
-
                 case Mode.ABS:
-                    const least_sig = this.fetch();
-                    const abs_address = data << 8 | least_sig;
-                    const readed_abs = this.readByte(abs_address);
-                    this.REG_ACC = this.REG_ACC || readed_abs;
+                    this.REG_ACC = this.REG_ACC || this.memory[data];
                     exe_cycles = 4;
                 break;
 
                 case Mode.ABSX:
-                    const least_sigx = this.fetch();
-                    const abs_addressx = (data << 8 | least_sigx) + this.REG_X;
-                    const readed_absx = this.readByte(abs_addressx);
-                    this.REG_ACC = this.REG_ACC || readed_absx;
-                    exe_cycles = abs_addressx > 0xFF? 5 : 4;
-                break;
-
                 case Mode.ABSY:
-                    const least_sigy = this.fetch();
-                    const abs_addressy = (data << 8 | least_sigy) + this.REG_Y;
-                    const readed_absy = this.readByte(abs_addressy);
-                    this.REG_ACC = this.REG_ACC || readed_absy;
-                    exe_cycles = abs_addressy > 0xFF? 5 : 4;
+                    this.REG_ACC = this.REG_ACC || this.memory[data];
+                    exe_cycles = page_crossed? 5 : 4;
                 break;
-
 
                 default:
                     break;
@@ -617,7 +558,10 @@ class CPU {
     private logicalEor (mode: Mode) : () => number {
 
         return () => {
-            const data = this.fetch();
+            const fetched = this.fetch(mode);
+            const data = fetched.data;
+            const page_crossed = fetched.page_crossed;
+
 
             let exe_cycles = 0;
 
@@ -628,42 +572,22 @@ class CPU {
                 break;
 
                 case Mode.ZP:
-                    const readedZP = this.readByte(data);
-                    this.REG_ACC = this.REG_ACC ^ readedZP;
+                    this.REG_ACC = this.REG_ACC ^ this.memory[data];
                     exe_cycles = 3;
                 break;
 
                 case Mode.ZPX:
-                    const readedZPX = this.readByte((data + this.REG_X) % 0xFF);
-                    this.REG_ACC = this.REG_ACC ^ readedZPX;
+                case Mode.ABS:
+                    this.REG_ACC = this.REG_ACC ^ this.memory[data];
                     exe_cycles = 4;
                 break;
 
-                case Mode.ABS:
-                    const least_sig = this.fetch();
-                    const abs_address = data << 8 | least_sig;
-                    const readed_abs = this.readByte(abs_address);
-                    this.REG_ACC = this.REG_ACC ^ readed_abs;
-                    exe_cycles = abs_address > 0xFF? 5 : 4;
-                break;
-
                 case Mode.ABSX:
-                    const least_sigx = this.fetch();
-                    const abs_addressx = (data << 8 | least_sigx) + this.REG_X;
-                    const readed_absx = this.readByte(abs_addressx);
-                    this.REG_ACC = this.REG_ACC ^ readed_absx;
-                    exe_cycles = abs_addressx > 0xFF? 5 : 4;
-
-                break;
-
                 case Mode.ABSY:
-                    const least_sigy = this.fetch();
-                    const abs_addressy = (data << 8 | least_sigy) + this.REG_Y;
-                    const readed_absy = this.readByte(abs_addressy);
-                    this.REG_ACC = this.REG_ACC ^ readed_absy;
-                    exe_cycles = abs_addressy > 0xFF? 5 : 4;
-                break;
+                    this.REG_ACC = this.REG_ACC ^ this.memory[data];
+                    exe_cycles = page_crossed ? 5 : 4;
 
+                break;
 
                 default:
                     break;
@@ -682,7 +606,11 @@ class CPU {
      */
     private logicalAnd(mode: Mode) : () => number {
         return () => {
-            const data = this.fetch();
+            const fetched = this.fetch(mode);
+            const data = fetched.data;
+            const page_crossed = fetched.page_crossed;
+
+
             let exe_cycles = 0;
 
             switch (mode) {
@@ -692,42 +620,21 @@ class CPU {
                 break;
 
                 case Mode.ZP:
-                    const readedZP = this.readByte(data);
-                    this.REG_ACC = this.REG_ACC && readedZP;
+                    this.REG_ACC = this.REG_ACC && this.memory[data];
                     exe_cycles = 3;
                 break;
 
                 case Mode.ZPX:
-                    const readedZPX = this.readByte((data + this.REG_X) % 0xFF);
-                    this.REG_ACC = this.REG_ACC && readedZPX;
+                case Mode.ABS:
+                    this.REG_ACC = this.REG_ACC && this.memory[data];
                     exe_cycles = 4;
                 break;
 
-                case Mode.ABS:
-                    const least_sig = this.fetch();
-                    const abs_address = data << 8 | least_sig;
-                    exe_cycles = least_sig;
-                    const readed_abs = this.readByte(abs_address);
-                    this.REG_ACC = this.REG_ACC && readed_abs;
-                    exe_cycles = abs_address > 0xFF? 5 : 4;
-                break;
-
                 case Mode.ABSX:
-                    const least_sigx = this.fetch();
-                    const abs_addressx = (data << 8 | least_sigx) + this.REG_X;
-                    const readed_absx = this.readByte(abs_addressx);
-                    this.REG_ACC = this.REG_ACC && readed_absx;
-                    exe_cycles = abs_addressx > 0xFF? 5 : 4;
-                break;
-
                 case Mode.ABSY:
-                    const least_sigy = this.fetch();
-                    const abs_addressy = (data << 8 | least_sigy) + this.REG_Y;
-                    const readed_absy = this.readByte(abs_addressy);
-                    this.REG_ACC = this.REG_ACC && readed_absy;
-                    exe_cycles = abs_addressy > 0xFF? 5 : 4;
+                    this.REG_ACC = this.REG_ACC && this.memory[data];
+                    exe_cycles = page_crossed? 5 : 4;
                 break;
-
 
                 default:
                     break;
@@ -782,7 +689,10 @@ class CPU {
     private subtract(mode: Mode): () => number {
         return () => {
 
-            const data = this.fetch();
+            const fetched = this.fetch(mode);
+            const data = fetched.data;
+            const page_crossed = fetched.page_crossed;
+
 
             let exe_cycles = 0;
     
@@ -793,46 +703,24 @@ class CPU {
                 break;
 
                 case Mode.ZP:
-                    const readed = this.readByte(data);
-                    this.REG_ACC = this.subtractAndSetFlag(readed, this.REG_ACC);
+                    this.REG_ACC = this.subtractAndSetFlag(this.memory[data], this.REG_ACC);
+
                     // Cycle for reading the memory
                     exe_cycles = 3;
                 break;
 
                 case Mode.ZPX:
-                    const readedx = this.readByte((data + this.REG_X) && 0xFF);
-                    this.REG_ACC = this.subtractAndSetFlag(readedx, this.REG_ACC);
-                    exe_cycles = 4;
-                break;
-
-                case Mode.ZPY:
-                    const readedy = this.readByte((data + this.REG_Y) && 0xFF);
-                    this.REG_ACC = this.subtractAndSetFlag(readedy, this.REG_ACC);
-                    exe_cycles = 4;
-                break;
-
                 case Mode.ABS:
-                    const least_sig = this.fetch();
-                    const abs_address = data << 8 | least_sig;
-                    const readed_abs = this.readByte(abs_address);
-                    this.REG_ACC = this.subtractAndSetFlag(readed_abs, this.REG_ACC);
-                    exe_cycles = abs_address > 0xFF? 5 : 4;
-                break;
-                case Mode.ABSX:
-                    const least_sigx = this.fetch();
-                    const abs_addressx = data << 8 | least_sigx;
-                    const readed_absx = this.readByte((abs_addressx + this.REG_X) && 0xFFFF);
-                    this.REG_ACC = this.subtractAndSetFlag(readed_absx, this.REG_ACC);
-                    exe_cycles = abs_addressx > 0xFF? 5 : 4;
+                    this.REG_ACC = this.subtractAndSetFlag(this.memory[data], this.REG_ACC);
+                    exe_cycles = 4;
                 break;
 
+                case Mode.ABSX:
                 case Mode.ABSY:
-                    const least_sigy = this.fetch();
-                    const abs_addressy = data << 8 | least_sigy;
-                    const readed_absy = this.readByte((abs_addressy + this.REG_X) && 0xFFFF);
-                    this.REG_ACC = this.subtractAndSetFlag(readed_absy, this.REG_ACC);
-                    exe_cycles = abs_addressy > 0xFF? 5 : 4;
+                    this.REG_ACC = this.subtractAndSetFlag(this.memory[data], this.REG_ACC);
+                    exe_cycles = page_crossed? 5 : 4;
                 break;
+
                 default:
                 break;
             }
@@ -843,57 +731,40 @@ class CPU {
     private add(mode: Mode): () => number {
         return () => {
 
-            const data = this.fetch();
+            const fetched = this.fetch(mode);
+            const address = fetched.data;
+            const page_crossed = fetched.page_crossed;
+
 
             let exe_cycles = 0;
     
             switch (mode) {
                 case Mode.IMD:
-                    this.REG_ACC = this.addAndSetFlag(data, this.REG_ACC);
+                    this.REG_ACC = this.addAndSetFlag(address, this.REG_ACC);
+
                     exe_cycles = 2;
                 break;
 
                 case Mode.ZP:
-                    const readed = this.readByte(data);
-                    this.REG_ACC = this.addAndSetFlag(readed, this.REG_ACC);
                     // Cycle for reading the memory
+                    this.REG_ACC = this.addAndSetFlag(this.memory[address], this.REG_ACC);
+
                     exe_cycles = 3;
                 break;
 
                 case Mode.ZPX:
-                    const readedx = this.readByte((data + this.REG_X) && 0xFF);
-                    this.REG_ACC = this.addAndSetFlag(readedx, this.REG_ACC);
-                    exe_cycles = 4;
-                break;
-
-                case Mode.ZPY:
-                    const readedy = this.readByte((data + this.REG_Y) && 0xFF);
-                    this.REG_ACC = this.addAndSetFlag(readedy, this.REG_ACC);
-                    exe_cycles = 4;
-                break;
-
                 case Mode.ABS:
-                    const least_sig = this.fetch();
-                    const abs_address = data << 8 | least_sig;
-                    const readed_abs = this.readByte(abs_address);
-                    this.REG_ACC = this.addAndSetFlag(readed_abs, this.REG_ACC);
-                    exe_cycles = abs_address > 0xFF? 5 : 4;
-                break;
-                case Mode.ABSX:
-                    const least_sigx = this.fetch();
-                    const abs_addressx = data << 8 | least_sigx;
-                    const readed_absx = this.readByte((abs_addressx + this.REG_X) && 0xFFFF);
-                    this.REG_ACC = this.addAndSetFlag(readed_absx, this.REG_ACC);
-                    exe_cycles = abs_addressx > 0xFF? 5 : 4;
+                    this.REG_ACC = this.addAndSetFlag(this.memory[address], this.REG_ACC);
+
+                    exe_cycles = 4;
                 break;
 
+                case Mode.ABSX:
                 case Mode.ABSY:
-                    const least_sigy = this.fetch();
-                    const abs_addressy = data << 8 | least_sigy;
-                    const readed_absy = this.readByte((abs_addressy + this.REG_X) && 0xFFFF);
-                    this.REG_ACC = this.addAndSetFlag(readed_absy, this.REG_ACC);
-                    exe_cycles = abs_addressy > 0xFF? 5 : 4;
+                    this.REG_ACC = this.addAndSetFlag(this.memory[address], this.REG_ACC);
+                    exe_cycles = page_crossed? 5 : 4;
                 break;
+
                 default:
                 break;
             }
@@ -913,43 +784,23 @@ class CPU {
 
         return () => {
             const register = reg;
-            const data = this.fetch();
-
+            const fetched = this.fetch(mode);
+            const address = fetched.data;
+            this.storeByte(address, register);
             let exe_cycles = 0;
     
             switch (mode) {
                 case Mode.ZP:
-                    this.storeByte(data, register);
                     exe_cycles = 3;
                 break;
                 case Mode.ZPX:
-                    this.storeByte((data + this.REG_X) % 0xFF, register);
-                    exe_cycles = 4;
-
-                break;
                 case Mode.ZPY:
-                    this.storeByte((data + this.REG_Y) % 0xFF, register);
-                    exe_cycles = 4;
-
-                break;
                 case Mode.ABS:
-                    const least_sig = this.fetch();
-                    const abs_address = data << 8 | least_sig;
-                    this.storeByte(abs_address, register);
-                    exe_cycles = 5;
-
+                    exe_cycles = 4;
                 break;
+
                 case Mode.ABSX:
-                    const least_sigx = this.fetch();
-                    const abs_addressx = data << 8 | least_sigx;
-                    this.storeByte(abs_addressx, register);
-                    exe_cycles = 5;
-
-                break;
                 case Mode.ABSY:
-                    const least_sigy = this.fetch();
-                    const abs_addressy = data << 8 | least_sigy;
-                    this.storeByte(abs_addressy, register);
                     exe_cycles = 5;
 
                 break;
@@ -963,33 +814,32 @@ class CPU {
         
         return () => {
             const register = reg;
-            const data = this.fetch();
-    
-            let exe_cycles = 0;
+            // const data = this.fetch();
+
+            const fetched = this.fetch(mode);
+
+            const address = fetched.data;
+            const page_crossed = fetched.page_crossed;
+            const data = this.memory[address];
 
     
+            let exe_cycles = 0;
     
             switch (mode) {
                 case Mode.IMD:
-                    this[register] = data;
+                    this[register] = fetched.data;
                     exe_cycles = 2;
                 break;
                 case Mode.ZP:
-                    const zp_value = this.readByte(data % 0x00FF);
-                    this[register] = zp_value;
+                    this[register] = data;
                     exe_cycles = 3;
                 break;
     
                 // The emulation skip one cycle for calculating the sum, now it's 3 cycles
                 // for ZPX load, and should be the same for ZPY mode
                 case Mode.ZPX:
-                    const zpx_value = this.readByte((data + this.REG_X) % 0xFF);
-                    this[register] = zpx_value;
-                    exe_cycles = 4;
-                break;
                 case Mode.ZPY:
-                    const zpy_value = this.readByte((data + this.REG_Y) % 0xFF);
-                    this[register] = zpy_value;
+                    this[register] = data;
                     exe_cycles = 4;
                 break;
     
@@ -997,27 +847,12 @@ class CPU {
                 // Compose them up to a 16 bits address and read the value of memory at the address
                 // 4 cycles in total
                 case Mode.ABS:
-                    const least_sig = this.fetch();
-                    const abs_address = data << 8 | least_sig;
-                    const abs_value = this.readByte(abs_address);
-                    this[register] = abs_value;
-                    exe_cycles = 4;
-                break;
                 case Mode.ABSX:
-                    const least_sigx = this.fetch();
-                    const abs_addressx = data << 8 | least_sigx;
-                    const abs_valuex = this.readByte(abs_addressx + this.REG_X);
-                    this[register] = abs_valuex;
-                    exe_cycles = abs_addressx > 0xFF? 5 : 4;
-                break;
-    
                 case Mode.ABSY:
-                    const least_sigy = this.fetch();
-                    const abs_addressy = data << 8 | least_sigy;
-                    const abs_valuey = this.readByte(abs_addressy + this.REG_Y);
-                    this[register] = abs_valuey;
-                    exe_cycles = abs_addressx > 0xFF? 5 : 4;
+                    this[register] = data;
+                    exe_cycles = page_crossed ? 5 : 4;
                 break;
+
                 default:
                 break;
             }
@@ -1049,7 +884,7 @@ class CPU {
     public execute(cycles: number): void {
         let exe_cycles = cycles;
         while (exe_cycles > 0) {
-            const instruction = this.fetch();
+            const instruction = this.fetch().data;
             exe_cycles--;
 
             if (!(instruction in this.opt_table)) {
@@ -1076,11 +911,99 @@ class CPU {
         this.REG_PC = value;
     }
 
-    private fetch() {
-        const data = this.memory[this.REG_PC];
-        this.REG_PC++;
-        return data;
+    private fetch(mode?: Mode) {
+
+        if (!mode) {
+            const data = this.memory[this.REG_PC];
+            this.REG_PC++;
+            return {
+                "data": data,
+                "page_crossed": false
+            };
+        }
+        
+
+        switch (+mode) {
+            case Mode.ACC: {
+                return {
+                    "data": this.REG_ACC,
+                    "page_crossed": false
+                }
+            }
+            case Mode.IMD :{
+                const data = this.memory[this.REG_PC];
+                this.REG_PC++;
+                return {
+                    "data": data,
+                    "page_crossed": false
+                };
+            }
+                
+            case Mode.ZP: {
+                const zp_address = this.memory[this.REG_PC];
+                this.REG_PC++;
+                return {
+                    "data":  zp_address,
+                    "page_crossed": false
+                }; 
+            }
+
+            case Mode.ZPX: {
+                const zp_address = this.memory[this.REG_PC] + this.REG_X;
+                this.REG_PC++;
+                return {
+                    "data":  zp_address & 0xFF,
+                    "page_crossed": false
+                };
+            }
+
+            case Mode.ZPY: {
+                const address = this.memory[this.REG_PC] + this.REG_Y;
+                this.REG_PC++;
+                return {
+                    "data":  address & 0xFF,
+                    "page_crossed": false
+                };
+            }
+
+            case Mode.ABS: {
+                const abs_address = this.memory[this.REG_PC+1] << 8 | this.memory[this.REG_PC];
+                this.REG_PC += 2;
+                return {
+                    "data":  abs_address,
+                    "page_crossed": abs_address > 0xFF? true : false
+                };
+            }
+
+            case Mode.ABSX: {
+                const abs_address = (this.memory[this.REG_PC+1] << 8 | this.memory[this.REG_PC]) + this.REG_X;
+                this.REG_PC += 2;
+                return {
+                    "data":  abs_address,
+                    "page_crossed": abs_address > 0xFF? true : false
+                };
+            }
+
+            case Mode.ABSY: {
+                const abs_address = (this.memory[this.REG_PC+1] << 8 | this.memory[this.REG_PC]) + this.REG_Y;
+                this.REG_PC += 2;
+                return {
+                    "data":  abs_address,
+                    "page_crossed": abs_address > 0xFF? true : false
+                };
+            }
+
+            
+        
+            default:
+                break;
+        }
     }
+    // private fetch() {
+    //     return this.fetch(Mode.IMD);
+    // }
+
+    
 
     private readByte(address: number) {
         const data = this.memory[address];
